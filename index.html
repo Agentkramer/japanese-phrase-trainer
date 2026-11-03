@@ -131,6 +131,10 @@ details{background:var(--surface);border:1px solid var(--line);border-radius:14p
 summary{cursor:pointer;font-weight:500}
 details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.voice-status{margin:10px 0 0}
+.voice-status[data-level="basic"],.voice-status[data-level="none"]{color:var(--bad)}
+.voice-help{margin-top:8px;font-size:.9rem}
+.voice-help summary{min-height:44px;display:flex;align-items:center;cursor:pointer}
 </style>
 </head>
 <body>
@@ -186,7 +190,7 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
       <button class="btn" id="slow" type="button">Listen slowly</button>
       <button class="btn" id="reveal" type="button" hidden>Show kana</button>
     </div>
-    <p class="note" id="voiceMsg" hidden></p>
+    <div class="voice-slot"></div>
 
     <label class="field" for="answer">Your answer</label>
     <input type="text" id="answer" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" inputmode="text" placeholder="Type romaji, or dictate">
@@ -217,8 +221,7 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
       <li>The particle は is typed <b>ha</b>, even though it is read “wa”.</li>
       <li>Tap <b>Speak</b> and say the phrase. What the browser heard appears in the answer field and is checked straight away. Recognition often returns kanji. These phrases accept the usual kanji spellings, so a miss means it heard something different. Say it again, a little slower.</li>
       <li>Speak uses your browser’s speech service, so it needs an internet connection and permission to use the microphone. If there is no Speak button, this browser has no speech recognition. Tap the microphone on the keyboard while a Japanese keyboard is active instead.</li>
-      <li>Listen plays a recording, so it sounds the same on every device. “Listen slowly” is the same reading with a pause between the parts, not a stretched one.</li>
-      <li>If a phrase has no recording yet, the device’s own Japanese voice reads it. If that is silent, install a voice in iPad Settings → Accessibility → Spoken Content → Voices.</li>
+      <li>Listen is read aloud by your device’s own Japanese voice, so it sounds different on different devices and is better with an Enhanced voice installed (see “Sounds off?” under the buttons). “Listen slowly” is the same reading with a pause between the parts, not a stretched one.</li>
     </ul>
   </details>
   </div>
@@ -257,6 +260,7 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
         <button class="btn" id="drPlay" type="button">▶ Listen</button>
         <button class="btn" id="drSlow" type="button">Listen slowly</button>
       </div>
+      <div class="voice-slot"></div>
       <label class="field" for="drAnswer">Price in yen</label>
       <input type="text" id="drAnswer" inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="For example 380">
       <div class="row">
@@ -326,7 +330,7 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
         <label class="field" for="countryJp">The country in Japanese, in romaji</label>
         <input type="text" id="countryJp" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="40" placeholder="PERU-">
         <p class="preview empty" id="countryKana" lang="ja" data-empty="The country in kana appears here"></p>
-        <p class="note">A capital first letter types katakana, lower case types hiragana, and “-” is a long vowel (PERU- is ペルー). Phrases with a country typed in by hand are read by your device’s voice, not a recording.</p>
+        <p class="note">A capital first letter types katakana, lower case types hiragana, and “-” is a long vowel (PERU- is ペルー). A hand-typed country is read the same way as the rest, by your device’s voice, so check it sounds right.</p>
       </div>
 
       <div class="sec">
@@ -339,7 +343,7 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
         <label class="field" for="jobJp">Your job in Japanese, in romaji</label>
         <input type="text" id="jobJp" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="40" placeholder="juui">
         <p class="preview empty" id="jobKana" lang="ja" data-empty="Your job in kana appears here"></p>
-        <p class="note">A capital first letter types katakana, lower case types hiragana, and “-” is a long vowel. Phrases with a job typed in by hand are read by your device’s voice, not a recording.</p>
+        <p class="note">A capital first letter types katakana, lower case types hiragana, and “-” is a long vowel. A hand-typed job is read the same way as the rest, by your device’s voice, so check it sounds right.</p>
       </div>
 
       <div class="fb miss" id="setupMsg" role="alert" hidden><p id="setupMsgText"></p></div>
@@ -351,6 +355,18 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
   </div>
 </main>
 
+<template id="voiceHelpT">
+  <details class="voice-help">
+    <summary>Sounds off? Improve the voice</summary>
+    <ul>
+      <li><b>iPhone and iPad:</b> Settings → Accessibility → Spoken Content → Voices → Japanese. Download Kyoko or Otoya in the Enhanced version (or Premium, if offered), then reload this page and pick it in the Voice menu.</li>
+      <li><b>Mac:</b> System Settings → Accessibility → Read &amp; Speak (called Spoken Content on older macOS). Add a Japanese voice marked Enhanced, then reload.</li>
+      <li><b>Android:</b> install Japanese voice data for your text-to-speech engine (Settings → Text-to-speech output; the exact path varies by phone), then reload.</li>
+      <li><b>Windows:</b> Edge ships natural Japanese voices, so it usually sounds best there. Other browsers use the voices from Settings → Time &amp; language → Speech.</li>
+      <li>The voice is generated by your device, not by this site. If it still sounds wrong, use the written kana as the guide.</li>
+    </ul>
+  </details>
+</template>
 <script>
 /* ---------- pure logic ---------- */
 /* `s` is the spelling handed to the speech engine. Kana alone gives correct sounds but
@@ -368,15 +384,6 @@ const WEEK1_PHRASES = [
   {k:"すみません", r:"sumimasen", e:"Excuse me", alt:["済みません"]},
   {k:"ごめんなさい", r:"gomennasai", e:"I’m sorry", alt:[]},
   {k:"ありがとうございます", r:"arigatou gozaimasu", e:"Thank you", alt:["有難うございます"]}
-];
-
-/* Voices of the pre-rendered audio. `id` is the folder under audio/ and `name` is what
-   the picker shows. `say` is for make-audio.js only: macOS voice identifiers, best first.
-   O-Ren is a Siri voice, which is why her identifiers differ from the other two. */
-const VOICES = [
-  {id:"kyoko", name:"Kyoko", say:["com.apple.voice.enhanced.ja-JP.Kyoko","com.apple.voice.compact.ja-JP.Kyoko"]},
-  {id:"otoya", name:"Otoya", say:["com.apple.voice.enhanced.ja-JP.Otoya","com.apple.voice.compact.ja-JP.Otoya"]},
-  {id:"oren", name:"O-Ren", say:["com.apple.ttsbundle.siri_O-ren_ja-JP_premium","com.apple.ttsbundle.siri_O-ren_ja-JP_compact"]}
 ];
 
 /* Week 2. Prices are not cards: the learner hears them, so they are generated (see
@@ -398,27 +405,26 @@ const WEEK2_PHRASES = [
 ];
 
 /* Things the learner hears but does not say: what staff and announcements say. Same shape
-   as a phrase, plus `note` (why it matters), `v` (the one voice it is recorded in, normal
-   speed only: you hear staff once, at speed) and `reply` (indices into the week's own
+   as a phrase, plus `note` (why it matters) and `reply` (indices into the week's own
    `phrases`: `ok` are good answers, `bad` are answers to a different question). */
 const WEEK2_HEAR = [
-  {k:"いらっしゃいませ", r:"irasshaimase", e:"Welcome", v:"kyoko",
+  {k:"いらっしゃいませ", r:"irasshaimase", e:"Welcome",
    note:"Said to you within a second of entering any shop. There is nothing to answer: it is a greeting to the room."},
-  {k:"ふくろは ごりようですか", r:"fukuro wa goriyou desu ka", e:"Do you need a bag?", s:"袋は ご利用ですか", soft:["ふくろわ ごりようですか"], v:"kyoko",
+  {k:"ふくろは ごりようですか", r:"fukuro wa goriyou desu ka", e:"Do you need a bag?", s:"袋は ご利用ですか", soft:["ふくろわ ごりようですか"],
    note:"One of the three checkout questions.", reply:{ok:[8,7], bad:[3]}},
-  {k:"おべんとうは あたためますか", r:"obentou wa atatamemasu ka", e:"Shall I heat your bento?", s:"お弁当は 温めますか", soft:["おべんとうわ あたためますか"], v:"kyoko",
+  {k:"おべんとうは あたためますか", r:"obentou wa atatamemasu ka", e:"Shall I heat your bento?", s:"お弁当は 温めますか", soft:["おべんとうわ あたためますか"],
    note:"The second checkout question.", reply:{ok:[5,6], bad:[0]}},
-  {k:"おはしは おつけしますか", r:"ohashi wa otsukeshimasu ka", e:"Shall I put chopsticks in?", s:"お箸は お付けしますか", soft:["おはしわ おつけしますか"], v:"kyoko",
+  {k:"おはしは おつけしますか", r:"ohashi wa otsukeshimasu ka", e:"Shall I put chopsticks in?", s:"お箸は お付けしますか", soft:["おはしわ おつけしますか"],
    note:"The third checkout question.", reply:{ok:[5,6,10], bad:[7]}},
-  {k:"ポイントカードは おもちですか", r:"POINTOKA-DO wa omochi desu ka", e:"Do you have a point card?", s:"ポイントカードは お持ちですか", soft:["ポイントカードわ おもちですか"], v:"kyoko",
+  {k:"ポイントカードは おもちですか", r:"POINTOKA-DO wa omochi desu ka", e:"Do you have a point card?", s:"ポイントカードは お持ちですか", soft:["ポイントカードわ おもちですか"],
    note:"The one you answer だいじょうぶです to. It sounds alarming if you do not parse it.", reply:{ok:[6], bad:[3,0]}},
-  {k:"ごうけい ごひゃく はちじゅう えんです", r:"goukei gohyaku hachijuu en desu", e:"That’s 580 yen in total", v:"kyoko",
+  {k:"ごうけい ごひゃく はちじゅう えんです", r:"goukei gohyaku hachijuu en desu", e:"That’s 580 yen in total",
    note:"The total. Listen for the numbers, not the words around them.", reply:{ok:[3,4], bad:[1]}},
-  {k:"おあずかりします", r:"oazukarishimasu", e:"I’ll take that (said as you hand over money)", s:"お預かりします", v:"kyoko",
+  {k:"おあずかりします", r:"oazukarishimasu", e:"I’ll take that (said as you hand over money)", s:"お預かりします",
    note:"Said as you pay. The transaction is not over yet."},
-  {k:"おつりです", r:"otsuri desu", e:"Here’s your change", s:"お釣りです", v:"kyoko",
+  {k:"おつりです", r:"otsuri desu", e:"Here’s your change", s:"お釣りです",
    note:"Tells you the transaction is over."},
-  {k:"ありがとうございました", r:"arigatou gozaimashita", e:"Thank you (as you leave)", v:"kyoko",
+  {k:"ありがとうございました", r:"arigatou gozaimashita", e:"Thank you (as you leave)",
    note:"Compare week 1’s ありがとうございます: ました is the past form, said as you go. You will hear it at every till."}
 ];
 
@@ -555,10 +561,10 @@ const WEEKS = [
 
 /* ---- the learner's own details ----
    Phrases with a `slot` are templates: {country.k} and friends are filled from the
-   learner's profile. Countries and jobs are finite lists, so every one of them has
-   pre-rendered audio. A name cannot, and neither can a typed-in "Other", so those
-   phrases are `live`: read by the device voice. `k` is kana, `r` the romaji to type
-   (a capital first letter types katakana), `kj` an optional kanji spelling. */
+   learner's profile. Countries and jobs are finite lists, so they are known ahead of time;
+   names and a typed-in "Other" are not. All of it is read by the device voice. `k` is
+   kana, `r` the romaji to type (a capital first letter types katakana), `kj` an optional
+   kanji spelling. */
 const COUNTRIES = [
   {id:"ar", e:"Argentina", nat:"Argentine", k:"アルゼンチン", r:"ARUZENCHIN"},
   {id:"au", e:"Australia", nat:"Australian", k:"オーストラリア", r:"O-SUTORARIA"},
@@ -643,7 +649,6 @@ function fillPhrase(p, vals){
     const v = p[key];
     out[key] = typeof v === "string" ? fillText(v, vals) : Array.isArray(v) ? v.map(x => fillText(x, vals)) : v;
   }
-  if (p.slot === "name" || (vals[p.slot] && vals[p.slot].custom)) out.live = true;
   out.personal = true;
   delete out.slot;
   return out;
@@ -702,7 +707,7 @@ function numberReading(n){
   });
   return {k:parts.map(p => p[0]).join(" "), r:parts.map(p => p[1]).join(" ")};
 }
-/* A price as a phrase, for the drill and for make-audio.js. Spaces are the slow take's pauses. */
+/* A price as a phrase, for the drill. Spaces are the slow take's pauses. */
 function priceItem(n){
   const {k, r} = numberReading(n);
   return {k:k + " えんです", r:r + " en desu", e:n.toLocaleString("en-US") + " yen", n};
@@ -753,9 +758,27 @@ function resolveProfile(s){
   } catch (e) { return null; }
 }
 
-/* Audio file name for a phrase. Derived from the romaji so the generator and the page
-   always agree without a second field to keep in sync. */
-function audioId(p){ return p.r.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
+/* Speech output is always the device's own Japanese voice (Apple's system voices may not be
+   redistributed, so the site ships no recordings). Quality therefore depends on what is
+   installed, and the page says so. These helpers are pure so test.js can check them. */
+const NOVELTY_VOICES = /^(eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley)\b/i;
+/* Apple tags its novelty character voices ja-JP and lists them first, so they are dropped. */
+function japaneseVoices(list){
+  return list.filter(v => /^ja([-_]|$)/i.test(v.lang) && !NOVELTY_VOICES.test(v.name));
+}
+/* 3 = Premium, 2 = Enhanced, 1 = a named standard voice, 0 = anything else. */
+function voiceQuality(v){
+  return /premium/i.test(v.name) ? 3 : /enhanced|natural/i.test(v.name) ? 2 : /kyoko|otoya|hattori|o-ren|google|nanami|haruka|ayumi/i.test(v.name) ? 1 : 0;
+}
+function rankVoices(list){
+  return japaneseVoices(list).map((v, i) => [v, i]).sort((a, b) => voiceQuality(b[0]) - voiceQuality(a[0]) || a[1] - b[1]).map(x => x[0]);
+}
+/* What to tell the learner about the voice that will speak: "good", "basic" or "none". */
+function voiceStatus(v){
+  if (!v) return {level:"none", text:"No Japanese voice found on this device, so nothing can be read aloud. See \u201CSounds off?\u201D below."};
+  if (voiceQuality(v) >= 2) return {level:"good", text:"Read aloud by your device\u2019s voice: " + v.name + ". Other devices sound a little different."};
+  return {level:"basic", text:"Read aloud by your device\u2019s voice: " + v.name + ". It is a basic voice and may sound flat or robotic. See \u201CSounds off?\u201D below."};
+}
 function speechText(p){ return p.s || p.k; }
 function speechChunks(p){ return speechText(p).split(/\s+/).filter(Boolean); }
 
@@ -914,17 +937,6 @@ function init(){
   const KEY_VOICE = "jpt-voice";
   try { $("romajiToggle").checked = localStorage.getItem(KEY_ROMAJI) === "1"; } catch (e) {}
 
-  /* The voice is chosen on the card and again in the price drill: two selects, one setting. */
-  VOICES.forEach(v => { $("voice").add(new Option(v.name, v.id)); $("voiceDrill").add(new Option(v.name, v.id)); });
-  function setVoice(id){
-    $("voice").value = $("voiceDrill").value = id;
-    try { localStorage.setItem(KEY_VOICE, id); } catch (e) {}
-  }
-  try {
-    const saved = localStorage.getItem(KEY_VOICE);
-    if (VOICES.some(v => v.id === saved)) $("voice").value = $("voiceDrill").value = saved;
-  } catch (e) {}
-
   function kanaVisible(){ return !$("hide").checked || revealed; }
   function romajiVisible(){ return $("romajiToggle").checked && kanaVisible(); }
 
@@ -976,7 +988,6 @@ function init(){
     $("answer").value = "";
     $("feedback").textContent = "";
     updatePreview(); renderCard(); renderList();
-    $("voiceMsg").hidden = true;
   }
 
   function showFeedback(res, p){
@@ -1028,78 +1039,74 @@ function init(){
     revealed = true; renderCard();
   }
 
-  /* Speech output. A pre-rendered file from audio/ when there is one, the device voice
-     otherwise. The files are the same on every device; the fallback is not. */
-  const player = new Audio();
-  let jaVoice = null;
+  /* Speech output: always the device's own Japanese voice, because Apple's system voices
+     may not be redistributed as recordings. What it sounds like depends on the voices
+     installed, so the page shows which one speaks and how to get a better one. */
+  const synth = window.speechSynthesis;
+  const SLOW_GAP = 450, ITEM_GAP = 500, SLOW_RATE = 0.9;
+  let deviceVoices = [], jaVoice = null, seq = 0, timer = null;
 
-  /* The ja-JP tag is also worn by Apple's novelty character voices (Eddy, Grandma,
-     Rocko ...), and they are first in the list. Never just take the first match. */
-  function pickVoice(){
-    const synth = window.speechSynthesis;
-    if (!synth) return null;
-    let ja = [];
-    try { ja = synth.getVoices().filter(v => /^ja/i.test(v.lang)); } catch (e) { return null; }
-    jaVoice = ja.find(v => /premium/i.test(v.name))
-           || ja.find(v => /enhanced/i.test(v.name))
-           || ja.find(v => /kyoko|otoya|hattori|o-ren/i.test(v.name))
-           || null;
-    return jaVoice;
+  /* The voice is chosen on the card and again in the price drill: two selects, one setting. */
+  const voiceSelects = [$("voice"), $("voiceDrill")];
+  document.querySelectorAll(".voice-slot").forEach(slot => {
+    const st = el("p", "note voice-status");
+    st.setAttribute("role", "status");
+    slot.append(st, $("voiceHelpT").content.cloneNode(true));
+  });
+
+  function renderVoices(){
+    let all = [];
+    try { all = synth ? synth.getVoices() : []; } catch (e) {}
+    deviceVoices = rankVoices(all);
+    let saved = null;
+    try { saved = localStorage.getItem(KEY_VOICE); } catch (e) {}
+    jaVoice = deviceVoices.find(v => v.voiceURI === saved) || deviceVoices[0] || null;
+    voiceSelects.forEach(sel => {
+      sel.replaceChildren();
+      deviceVoices.forEach(v => sel.add(new Option(v.name, v.voiceURI)));
+      sel.disabled = !deviceVoices.length;
+      if (jaVoice) sel.value = jaVoice.voiceURI; else sel.add(new Option("none found", ""));
+    });
+    const st = synth ? voiceStatus(jaVoice) : {level:"none", text:"This browser cannot read aloud. Try Safari, Chrome or Edge."};
+    document.querySelectorAll(".voice-status").forEach(n => { n.dataset.level = st.level; n.textContent = st.text; });
+  }
+  function setVoice(uri){
+    try { localStorage.setItem(KEY_VOICE, uri); } catch (e) {}
+    renderVoices();
   }
 
-  function synthesize(p, slow){
-    const msg = $("voiceMsg");
-    const synth = window.speechSynthesis;
-    if (!synth) { msg.hidden = false; msg.textContent = "No recording for this phrase, and this browser has no speech output."; return; }
-    const v = jaVoice || pickVoice();
-    const chunks = speechChunks(p);
-    const u = new SpeechSynthesisUtterance(slow ? chunks.join("、") : chunks.join(""));
-    u.lang = "ja-JP";
-    u.rate = slow ? 0.8 : 1;
-    if (v) u.voice = v;
-    /* A card with the learner's own details has no recording, so say why it sounds different. */
-    msg.hidden = !!v && !p.live;
-    msg.textContent = !v ? "No Japanese voice on this device. Install one in Settings → Accessibility → Spoken Content → Voices."
-      : p.live ? "This one includes your own details, so it is read by your device’s voice instead of a recording. It may sound a little different." : "";
-    try { synth.speak(u); } catch (e) { msg.hidden = false; msg.textContent = "Speech output is blocked here."; }
-  }
-
-  function speak(slow){
-    const p = phrases[idx];
-    stopClips();
-    if (p.live) { synthesize(p, slow); return; }
-    player.src = "audio/" + $("voice").value + "/" + audioId(p) + (slow ? ".slow" : "") + ".m4a";
-    /* A newer click interrupts the older play() with an AbortError. That is not a missing
-       file, and falling back on it would speak over the recording that replaced it. */
-    player.play().then(() => { $("voiceMsg").hidden = true; })
-      .catch(err => { if (!err || err.name !== "AbortError") synthesize(p, slow); });
-  }
-
-  /* Recordings played one after another (a dialogue line can be two clips). A newer call
-     cancels the older chain, so sequences never overlap. Anything that stops audio goes
-     through stopClips. */
-  let clipSeq = 0;
-  const audioUrl = (p, slow, voice) => "audio/" + (voice || p.v || $("voice").value) + "/" + audioId(p) + (slow ? ".slow" : "") + ".m4a";
+  /* Every item is read as the chunks of its speech text (the spaces in `s`). Normal speed
+     is one utterance per item; slow is one per chunk with a pause between, at a rate near
+     normal, because stretching an utterance smears the compact voices. A newer call bumps
+     `seq`, which silences the older chain, so sequences never overlap. */
   function stopClips(){
-    clipSeq++;
-    player.onended = null;
-    try { player.pause(); } catch (e) {}
-    if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+    seq++;
+    clearTimeout(timer);
+    if (synth) { try { synth.cancel(); } catch (e) {} }
   }
-  function playClips(items, slow, voice){
+  function playClips(items, slow){
     stopClips();
-    const my = clipSeq;
-    const step = i => {
-      if (my !== clipSeq || i >= items.length) return;
-      player.onended = () => step(i + 1);
-      player.src = audioUrl(items[i], slow, voice);
-      player.play().catch(err => {
-        if (my !== clipSeq || (err && err.name === "AbortError")) return;
-        synthesize(items[i], slow);
-      });
+    if (!synth) return;
+    const my = seq, parts = [];
+    items.forEach(p => {
+      const chunks = speechChunks(p);
+      if (slow) chunks.forEach((c, i) => parts.push({t:c, gap: i < chunks.length - 1 ? SLOW_GAP : ITEM_GAP}));
+      else parts.push({t:chunks.join(""), gap:ITEM_GAP});
+    });
+    const next = i => {
+      if (my !== seq || i >= parts.length) return;
+      const u = new SpeechSynthesisUtterance(parts[i].t);
+      u.lang = "ja-JP";
+      u.rate = slow ? SLOW_RATE : 1;
+      if (jaVoice) u.voice = jaVoice;
+      const done = () => { if (my === seq) timer = setTimeout(() => next(i + 1), parts[i].gap); };
+      u.onend = done;
+      u.onerror = done;
+      try { synth.speak(u); } catch (e) {}
     };
-    step(0);
+    next(0);
   }
+  function speak(slow){ playClips([phrases[idx]], slow); }
 
   /* Speech input. The transcript goes into the answer field and through checkAnswer, so
      kanji spellings, particle tolerance and the diff work the same as for typing. */
@@ -1179,8 +1186,7 @@ function init(){
   $("scRestart").addEventListener("click", startScenario);
   if (Recognition) { $("mic").hidden = false; $("mic").addEventListener("click", startMic); }
   $("hide").addEventListener("change", () => { revealed = false; renderCard(); });
-  $("voice").addEventListener("change", () => setVoice($("voice").value));
-  $("voiceDrill").addEventListener("change", () => setVoice($("voiceDrill").value));
+  voiceSelects.forEach(sel => sel.addEventListener("change", () => setVoice(sel.value)));
   $("romajiToggle").addEventListener("change", () => {
     try { localStorage.setItem(KEY_ROMAJI, $("romajiToggle").checked ? "1" : "0"); } catch (e) {}
     renderCard();
@@ -1188,11 +1194,9 @@ function init(){
   $("prev").addEventListener("click", () => go(idx - 1));
   $("next").addEventListener("click", () => go(idx + 1));
 
-  /* getVoices() is empty until the list loads, so pick again when it arrives. */
-  if (window.speechSynthesis) {
-    pickVoice();
-    window.speechSynthesis.addEventListener?.("voiceschanged", pickVoice);
-  }
+  /* getVoices() is empty until the list loads, so read it again when it arrives. */
+  renderVoices();
+  if (synth) synth.addEventListener?.("voiceschanged", renderVoices);
 
   /* ---- course views: the overview at #, a week at #week-N ---- */
   function el(tag, cls, text){
@@ -1461,7 +1465,7 @@ function init(){
     $("drCount").textContent = dr.total ? "Right first time: " + dr.right + " of " + dr.total : "";
     if (play !== false) drPlay(false);
   }
-  const drPlay = slow => playClips([dr.item], slow, $("voice").value);
+  const drPlay = slow => playClips([dr.item], slow);
   function drCheck(){
     if (dr.settled) { nextPrice(); $("drAnswer").focus(); return; }
     const v = parseYen($("drAnswer").value);

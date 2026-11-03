@@ -2,8 +2,8 @@ const fs=require('fs'),vm=require('vm');
 const html=fs.readFileSync('index.html','utf8');
 const code=html.split('<script>')[1].split('</script>')[0];
 const ctx={};vm.createContext(ctx);
-vm.runInContext(code+';this.t={convert,checkAnswer,bestAlternative,WEEKS,VOICES,allPhrases,hearPhrases,audioId,weekPhrases,reviewCards,deckSize,resolveProfile,fillPhrase,nameToKana,isKana,COUNTRIES,JOBS,EXAMPLE,numberReading,priceItem,PRICES,parseYen,priceHint,strip}',ctx);
-const {convert,checkAnswer,bestAlternative,WEEKS,VOICES,allPhrases,hearPhrases,audioId,weekPhrases,reviewCards,deckSize,resolveProfile,fillPhrase,nameToKana,isKana,COUNTRIES,JOBS,EXAMPLE,numberReading,priceItem,PRICES,parseYen,priceHint,strip}=ctx.t;
+vm.runInContext(code+';this.t={convert,checkAnswer,bestAlternative,WEEKS,allPhrases,hearPhrases,japaneseVoices,voiceQuality,rankVoices,voiceStatus,weekPhrases,reviewCards,deckSize,resolveProfile,fillPhrase,nameToKana,isKana,COUNTRIES,JOBS,EXAMPLE,numberReading,priceItem,PRICES,parseYen,priceHint,strip}',ctx);
+const {convert,checkAnswer,bestAlternative,WEEKS,allPhrases,hearPhrases,japaneseVoices,voiceQuality,rankVoices,voiceStatus,weekPhrases,reviewCards,deckSize,resolveProfile,fillPhrase,nameToKana,isKana,COUNTRIES,JOBS,EXAMPLE,numberReading,priceItem,PRICES,parseYen,priceHint,strip}=ctx.t;
 /* Week 1 is built from the learner's profile. Daniel's own must reproduce his original cards. */
 const DANIEL=resolveProfile({name:{e:'Daniel',r:'DANIERU'},country:{id:'de'},job:{id:'teacher'}});
 const PHRASES=weekPhrases(WEEKS[0],DANIEL);
@@ -44,7 +44,6 @@ eq(PHRASES[3].e,'I’m from Germany','from card english');
 eq(PHRASES[5].k,'わたしは きょうしです','job card');
 eq(PHRASES[5].s,'私は 教師です','job card speech spelling');
 need(/せんせい/.test(PHRASES[5].tip),'teacher keeps its note about せんせい');
-need(PHRASES[1].live===true&&!PHRASES[2].live,'only the name card is read live');
 need(PHRASES.every(p=>!('slot' in p)),'a filled card keeps no slot');
 eq(weekPhrases(WEEKS[0],null).length,7,'week 1 without a profile keeps only the fixed cards');
 eq(resolveProfile(null),null,'no profile');
@@ -57,7 +56,7 @@ eq(custom&&custom.name.k,'アナ','name typed in mixed case');
 eq(custom&&custom.country.k,'ペルー','custom country kana comes from the converter');
 eq(custom&&custom.job.k,'じゅうい','custom job is hiragana when typed in lower case');
 const cc=custom&&fillPhrase(WEEKS[0].phrases[2],{country:custom.country});
-need(cc&&cc.live===true&&cc.e==='I’m Peruvian','a typed-in country is read live and uses the nationality');
+need(cc&&cc.e==='I’m Peruvian','a typed-in country uses the nationality');
 eq(nameToKana('DANIERU'),'ダニエル','nameToKana');
 eq(nameToKana('Anna'),'アンナ','nameToKana mixed case');
 eq(nameToKana('jon'),'ジョン','nameToKana lower case still gives katakana');
@@ -89,15 +88,11 @@ WEEKS.forEach((w,i)=>{
 });
 const kanjiTotal=WEEKS.reduce((n,w)=>n+w.kanji.length,0);
 need(kanjiTotal<=40,'signage kanji should stay recognition-sized, got '+kanjiTotal);
-const ids=new Map();
 for(const p of allPhrases().concat(hearPhrases())){
  need(p.k&&p.r&&p.e,'phrase needs k, r and e: '+JSON.stringify(p));
  need(checkAnswer(p,p.k).status==='ok','model phrase fails its own check: '+p.k);
  need(checkAnswer(p,convert(p.r,true)).status==='ok','typing the romaji does not pass: '+p.k+' <- '+p.r);
  for(const a of (p.alt||[]).concat(p.soft||[]))need(checkAnswer(p,a).status==='ok','alt/soft spelling does not pass: '+a);
- const id=audioId(p);
- need(!ids.has(id)||ids.get(id)===p.k,'two different phrases share the audio id '+id);
- ids.set(id,p.k);
 }
 /* Numbers: the readings are generated, so the irregular ones are checked by value. */
 const reading={100:'ひゃく',300:'さんびゃく',380:'さんびゃく はちじゅう',198:'ひゃく きゅうじゅう はち',600:'ろっぴゃく',800:'はっぴゃく',
@@ -138,7 +133,7 @@ for(const w of WEEKS)for(const [n,i] of w.review||[]){
 const hearK=new Set((w2.hear||[]).map(h=>h.k));
 for(const h of w2.hear){
  need(h.k&&h.r&&h.e&&h.note,'hear item needs k, r, e and a note: '+h.k);
- need(VOICES.some(v=>v.id===h.v),'hear item has an unknown voice: '+h.k);
+ need(!('v' in h),'hear items are read by the device voice, not a recorded one: '+h.k);
  if(h.reply){
   const inRange=i=>Number.isInteger(i)&&i>=0&&i<w2.phrases.length;
   need(h.reply.ok.length>0&&h.reply.ok.every(inRange)&&h.reply.bad.every(inRange),'reply indices out of range: '+h.k);
@@ -169,6 +164,19 @@ eq(w2.kanji.length,7,'week 2 signs');
 need(w2.kanji.every(k=>k.hint&&k.hint.length>10),'every week 2 sign has a memory hook');
 need(w2.kanji.every(k=>!/[0-9]{2,}/.test(k.hint)),'a sign hook carries no stray numbers');
 
+// device voices: novelty voices are dropped, the best installed voice is ranked first
+const V=(name,lang)=>({name,lang,voiceURI:name});
+const sample=[V('Eddy (Japanese (Japan))','ja-JP'),V('Grandma','ja-JP'),V('Anna','de-DE'),V('Kyoko','ja-JP'),V('Otoya (Enhanced)','ja_JP'),V('Hattori (Premium)','ja-JP'),V('Flo','ja-JP')];
+eq(japaneseVoices(sample).map(v=>v.name).join('|'),'Kyoko|Otoya (Enhanced)|Hattori (Premium)','only real Japanese voices are listed');
+eq(rankVoices(sample).map(v=>v.name).join('|'),'Hattori (Premium)|Otoya (Enhanced)|Kyoko','Premium before Enhanced before standard');
+eq(rankVoices([V('Kyoko','ja-JP'),V('Otoya','ja-JP')]).map(v=>v.name).join('|'),'Kyoko|Otoya','equal quality keeps the device order');
+eq(voiceQuality(V('Microsoft Nanami Online (Natural) - Japanese (Japan)','ja-JP')),2,'Edge natural voices count as enhanced');
+eq(voiceQuality(V('Reed','ja-JP')),0,'an unknown voice is lowest');
+eq(rankVoices([]).length,0,'no voices');
+eq(voiceStatus(null).level,'none','no voice');
+eq(voiceStatus(V('Kyoko','ja-JP')).level,'basic','a standard voice is basic');
+eq(voiceStatus(V('Kyoko (Enhanced)','ja-JP')).level,'good','an enhanced voice is good');
+need(/Kyoko \(Enhanced\)/.test(voiceStatus(V('Kyoko (Enhanced)','ja-JP')).text),'the status names the voice');
 console.log((errs.length?'FAIL':'ok  ')+' course:',WEEKS.length+' weeks,',allPhrases().length+' phrases,',hearPhrases().length+' heard items,',kanjiTotal+' signs');
 errs.forEach(e=>console.log('  - '+e));
 if(errs.length)process.exitCode=1;
