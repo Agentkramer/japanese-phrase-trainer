@@ -15,6 +15,11 @@ Small static web app (single `index.html`, no build step, no dependencies except
   - Always use full identifiers, never display names: bare `say -v Kyoko` resolves to the Enhanced voice, and the list shows two entries named Kyoko. O-Ren is a Siri voice, so her identifiers are `com.apple.ttsbundle.siri_O-ren_ja-JP_premium` (shown as "O-Ren (Enhanced)") and `..._compact`, not the `com.apple.voice.*` pattern of Kyoko and Otoya.
   - As of 2026-11-03 everything is rendered with the Enhanced voices. Premium Kyoko stays a stub even with everything downloaded; Japanese appears to have no Premium tier, so Enhanced is the ceiling for Apple voices here. On macOS 27 the voices live under System Settings → Accessibility → **Read & Speak** ("Spoken Content" was renamed; the internal id is still SpokenContent).
 - Two card toggles: "Hide kana, recall from English" (session only) and "Show romaji" (off by default, remembered in localStorage). Romaji is also suppressed while kana is hidden, so it cannot give the answer away.
+- Speech input: a "Speak" button (shown only when `SpeechRecognition`/`webkitSpeechRecognition` exists), lang `ja-JP`, `maxAlternatives` 5, interim results shown as "Hearing: ...". The final transcript goes into the answer field and through `checkAnswer`, so `alt`, `soft` and the diff apply to speech exactly as to typing. `bestAlternative(p, alts)` (pure, in `test.js`) takes the first candidate that passes, else the top one.
+  - The UI resets on the final result, not on `end`: browsers are unreliable about `end`, and a stuck "Stop" button after a correct answer would be bad. `end` still handles "heard nothing". A newer start/navigation aborts the old recognizer; its late events are ignored via `rec !== r`.
+  - Playback and speech synthesis are stopped when the mic starts (the recognizer must not hear the page, and iOS cannot do both).
+  - Errors map to plain messages in `MIC_ERRORS` (`not-allowed`, `service-not-allowed` = Dictation off on iOS, `no-speech`, `network`, `audio-capture`, `language-not-supported`); unknown codes show the raw code.
+  - Tested only with a scripted fake recognizer injected into an iframe (all flows and errors), never with a real voice. Real accuracy on a Japanese voice, iOS Safari and the permission prompts are unverified until tried on the iPad/iPhone. Needs https or localhost; will not work from `file://` in Safari.
 - Done-state in localStorage.
 - Pure logic is at the top of the script and testable in Node: `node test.js`.
 
@@ -22,7 +27,7 @@ Small static web app (single `index.html`, no build step, no dependencies except
 The artifact sandbox blocks the microphone. As a normal https site (GitHub Pages) the page can use the Web Speech API (`webkitSpeechRecognition`, lang `ja-JP`) directly. That is the main next step.
 
 ## Roadmap
-1. Add speech recognition (mic button): show transcript, compare via `checkAnswer` (recognizer returns kanji -> keep `alt` lists, use `maxAlternatives`). Handle iOS Safari quirks and permission denial gracefully.
+1. ~~Add speech recognition (mic button)~~ Built (see Current state). Still to do: try it on a real iPad/iPhone over https and fix whatever Safari does differently; tune `alt`/`soft` lists from what recognizers actually return (e.g. すいません for すみません).
 2. More phrase sets by week (numbers/prices, food, transit, hotel, sights, New Year closures: やっていますか). Move `PHRASES` into a JSON file per week.
 3. Signage kanji flash deck (出口, 入口, 駅, 男, 女, 禁煙, 乗り換え ...), recognition only.
 4. Optional: scenario/role-play mode (needs an LLM backend; decide later whether to add one).

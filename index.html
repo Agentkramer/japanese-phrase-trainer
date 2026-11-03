@@ -50,6 +50,7 @@ h2{margin:0 0 8px;font-size:1rem}
 .btn{font:inherit;font-weight:500;min-height:44px;padding:8px 16px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
 .btn:hover{border-color:var(--accent)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.listening{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
 .btn:focus-visible,input:focus-visible,summary:focus-visible,.item:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 label.field{font-size:.9rem;font-weight:500}
 input[type="text"]{width:100%;font:inherit;font-size:1.15rem;min-height:48px;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
@@ -107,8 +108,10 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
     <p class="preview empty" id="preview" lang="ja">Kana preview appears here</p>
     <div class="row">
       <button class="btn primary" id="check" type="button">Check</button>
+      <button class="btn" id="mic" type="button" aria-pressed="false" hidden>Speak</button>
       <button class="btn" id="clear" type="button">Clear</button>
     </div>
+    <p class="note" id="micMsg" role="status" hidden></p>
     <div id="feedback" role="status" aria-live="polite"></div>
     <div class="row">
       <button class="btn" id="prev" type="button">Previous</button>
@@ -127,8 +130,8 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
       <li>Type romaji and kana appears. Add a space between words.</li>
       <li>A capital first letter makes a word katakana: <b>DOITSU</b> becomes ドイツ. Use “-” for the long mark ー.</li>
       <li>The particle は is typed <b>ha</b>, even though it is read “wa”.</li>
-      <li>To dictate, tap the microphone on the iPad keyboard while a Japanese keyboard is active. Dictation often returns kanji. These phrases accept the usual kanji spellings, so a miss means the recognizer heard something different. Say it again, a little slower.</li>
-      <li>This page cannot use the microphone itself, because the viewer blocks it. Use the keyboard’s dictation key instead.</li>
+      <li>Tap <b>Speak</b> and say the phrase. What the browser heard appears in the answer field and is checked straight away. Recognition often returns kanji. These phrases accept the usual kanji spellings, so a miss means it heard something different. Say it again, a little slower.</li>
+      <li>Speak uses your browser’s speech service, so it needs an internet connection and permission to use the microphone. If there is no Speak button, this browser has no speech recognition. Tap the microphone on the keyboard while a Japanese keyboard is active instead.</li>
       <li>Listen plays a recording, so it sounds the same on every device. “Listen slowly” is the same reading with a pause between the parts, not a stretched one.</li>
       <li>If a phrase has no recording yet, the device’s own Japanese voice reads it. If that is silent, install a voice in iPad Settings → Accessibility → Spoken Content → Voices.</li>
     </ul>
@@ -281,6 +284,14 @@ function checkAnswer(p, raw){
   return {status:"miss", kanji, marks: align(Array.from(norm(p.k)), Array.from(nu))};
 }
 
+/* A recognizer returns several candidate transcripts, best first. Take the first one that
+   passes, else the top candidate, so the feedback diffs what was most likely said. */
+function bestAlternative(p, alts){
+  const list = alts.filter(a => strip(a));
+  for (const a of list) if (checkAnswer(p, a).status === "ok") return a;
+  return list[0] || "";
+}
+
 /* ---------- page wiring ---------- */
 function init(){
   const $ = id => document.getElementById(id);
@@ -345,6 +356,7 @@ function init(){
   function go(i){
     idx = (i + PHRASES.length) % PHRASES.length;
     revealed = false;
+    stopMic(); micSay("");
     $("answer").value = "";
     $("feedback").textContent = "";
     updatePreview(); renderCard(); renderList();
@@ -445,6 +457,64 @@ function init(){
       .catch(err => { if (!err || err.name !== "AbortError") synthesize(p, slow); });
   }
 
+  /* Speech input. The transcript goes into the answer field and through checkAnswer, so
+     kanji spellings, particle tolerance and the diff work the same as for typing. */
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const MIC_ERRORS = {
+    "not-allowed": "The microphone is blocked. Allow it for this site in your browser’s settings, then tap Speak again.",
+    "service-not-allowed": "Speech recognition is switched off on this device. On iPad or iPhone, turn on Dictation in Settings → General → Keyboard.",
+    "audio-capture": "No microphone found.",
+    "network": "Speech recognition needs an internet connection.",
+    "language-not-supported": "This browser has no Japanese speech recognition.",
+    "no-speech": "Did not hear anything. Tap Speak and try again."
+  };
+  let rec = null;
+
+  function micSay(t){ const m = $("micMsg"); m.hidden = !t; m.textContent = t || ""; }
+  function setListening(on){
+    $("mic").classList.toggle("listening", on);
+    $("mic").setAttribute("aria-pressed", on ? "true" : "false");
+    $("mic").textContent = on ? "Stop" : "Speak";
+  }
+  function stopMic(){
+    if (!rec) return;
+    const r = rec; rec = null; setListening(false);
+    try { r.abort(); } catch (e) {}
+  }
+
+  function startMic(){
+    if (rec) { try { rec.stop(); } catch (e) {} return; }
+    /* Do not let the recognizer hear our own playback, and iOS cannot do both at once. */
+    try { player.pause(); } catch (e) {}
+    if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+    const r = new Recognition();
+    r.lang = "ja-JP"; r.maxAlternatives = 5; r.interimResults = true; r.continuous = false;
+    let heard = false, failed = false;
+    r.onresult = e => {
+      const res = e.results[e.results.length - 1];
+      const alts = Array.from(res, a => a.transcript);
+      if (!res.isFinal) { micSay("Hearing: " + alts[0]); return; }
+      heard = true;
+      /* Reset now rather than on "end": some browsers are slow or unreliable about it. */
+      rec = null; setListening(false);
+      const text = bestAlternative(PHRASES[idx], alts);
+      $("answer").value = text; updatePreview();
+      micSay("Heard: " + text);
+      showFeedback(checkAnswer(PHRASES[idx], text), PHRASES[idx]);
+    };
+    r.onerror = e => {
+      failed = true;
+      if (e.error !== "aborted") micSay(MIC_ERRORS[e.error] || "Speech recognition failed (" + e.error + ").");
+    };
+    r.onend = () => {
+      if (rec !== r) return;
+      rec = null; setListening(false);
+      if (!heard && !failed) micSay("Did not catch anything. Tap Speak and try again.");
+    };
+    rec = r; setListening(true); micSay("Listening…");
+    try { r.start(); } catch (e) { rec = null; setListening(false); micSay("Could not start the microphone."); }
+  }
+
   $("answer").addEventListener("input", () => { updatePreview(); $("feedback").textContent = ""; });
   $("answer").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("check").click(); } });
   $("check").addEventListener("click", () => {
@@ -455,6 +525,7 @@ function init(){
   $("listen").addEventListener("click", () => speak(false));
   $("slow").addEventListener("click", () => speak(true));
   $("reveal").addEventListener("click", () => { revealed = true; renderCard(); });
+  if (Recognition) { $("mic").hidden = false; $("mic").addEventListener("click", startMic); }
   $("hide").addEventListener("change", () => { revealed = false; renderCard(); });
   $("voice").addEventListener("change", () => {
     try { localStorage.setItem(KEY_VOICE, $("voice").value); } catch (e) {}
