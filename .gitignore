@@ -1,2 +1,6 @@
 .DS_Store
 .claude/settings.local.json
+# Apple system-voice audio may not be redistributed (macOS SLA 2F); kept local only
+audio/
+# personal
+japan-schedule.md
