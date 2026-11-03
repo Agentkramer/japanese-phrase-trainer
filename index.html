@@ -85,6 +85,41 @@ a.item{text-decoration:none}
 .card h2{margin:0}
 .card ul{margin:0;padding-left:20px;display:grid;gap:4px}
 .card .sec{display:grid;gap:8px}
+.tabs{display:flex;flex-wrap:wrap;gap:8px}
+.tab{font:inherit;font-weight:500;min-height:44px;padding:8px 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.tab:hover{border-color:var(--accent)}
+.tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.tab:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.choices{display:grid;gap:8px}
+.item.right{border-color:var(--good);background:var(--good-bg);color:var(--good)}
+.item.wrong{border-color:var(--bad);background:var(--bad-bg);color:var(--bad)}
+.item.right .en,.item.wrong .en{color:inherit}
+.item[disabled]{cursor:default}
+.btn.icon{min-width:44px;padding:8px 12px}
+.linkbtn{font:inherit;background:none;border:0;color:var(--accent);padding:6px 0;min-height:44px;text-align:left;cursor:pointer}
+.linkbtn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.hrow{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;align-items:center;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.hrow .btn{grid-row:1 / span 2;align-self:start}
+.hrow > :not(.btn){grid-column:2}
+.hrow .jp{font-family:var(--display);font-weight:700;font-size:1.1rem}
+.hrow .more{grid-column:2;display:grid;gap:2px}
+.hrow .note{margin:0}
+.sign{margin:0;text-align:center;font-family:var(--display);font-weight:700;font-size:clamp(3rem,20vw,5.5rem);line-height:1.2}
+.log{display:grid;gap:10px}
+.bub{padding:10px 14px;border-radius:12px;display:grid;gap:2px;max-width:92%}
+.bub.clerk{background:var(--bg);border:1px solid var(--line)}
+.bub.you{background:var(--accent);color:var(--accent-ink);justify-self:end}
+.bub .jp{font-family:var(--display);font-weight:700;font-size:1.15rem}
+.bub .en{font-size:.85rem;opacity:.85}
+.bub .line{display:grid;grid-template-columns:auto 1fr;gap:0 10px;align-items:center}
+.bub .line .en{grid-column:2}
+.log .why{margin:0;font-size:.85rem;color:var(--muted);justify-self:end;max-width:92%;text-align:right}
+.tablewrap{overflow-x:auto;margin-top:10px}
+table.nums{border-collapse:collapse;width:100%;font-size:.8rem}
+table.nums th,table.nums td{border:1px solid var(--line);padding:4px 6px;text-align:center;font-weight:500}
+table.nums td.irr{background:var(--bad-bg);color:var(--bad);font-weight:700}
+table.nums td span{display:block;color:var(--muted);font-size:.7rem;font-weight:400}
+table.nums td.irr span{color:inherit}
 .kanji-row{display:flex;flex-wrap:wrap;gap:8px}
 .kj{display:inline-flex;flex-direction:column;align-items:center;min-width:64px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
 .kj b{font-family:var(--display);font-size:1.4rem;line-height:1.3}
@@ -130,6 +165,9 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
 
   <section class="card" id="weekInfo" aria-label="About this week"></section>
 
+  <div class="tabs" id="tabs" role="tablist" aria-label="Activities" hidden></div>
+
+  <div class="view" id="act-phrases">
   <section class="card" id="practice" aria-label="Current phrase">
     <div class="top">
       <span id="counter"></span>
@@ -183,6 +221,77 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
       <li>If a phrase has no recording yet, the device’s own Japanese voice reads it. If that is silent, install a voice in iPad Settings → Accessibility → Spoken Content → Voices.</li>
     </ul>
   </details>
+  </div>
+
+  <div class="view" id="act-listen" hidden>
+    <section class="card" id="qz" aria-label="What did they say?">
+      <h2>What did they say?</h2>
+      <p class="note">Press play, then pick what it means and what you would answer. Staff speak at normal speed.</p>
+      <div class="top"><span id="qzCount"></span></div>
+      <div class="row"><button class="btn primary" id="qzPlay" type="button">▶ Play</button></div>
+      <div class="sec" id="qzStep1">
+        <p class="english">What does it mean?</p>
+        <div class="choices" id="qzMeaning"></div>
+      </div>
+      <div class="sec" id="qzStep2" hidden>
+        <p class="english">What would you answer?</p>
+        <div class="choices" id="qzReply"></div>
+      </div>
+      <div id="qzFeedback" role="status" aria-live="polite"></div>
+      <div class="row"><button class="btn primary" id="qzNext" type="button" hidden>Next</button></div>
+    </section>
+    <section aria-label="What you will hear">
+      <h2>What you will hear</h2>
+      <ol id="hearList"></ol>
+    </section>
+  </div>
+
+  <div class="view" id="act-numbers" hidden>
+    <section class="card" id="drill" aria-label="Price drill">
+      <h2>How many yen?</h2>
+      <p class="note">Listen, then type the price as digits. Listen slowly pauses between the parts. Use the table below if you are not sure how a number is built.</p>
+      <div class="top"><span id="drCount"></span>
+        <label class="toggle">Voice <select id="voiceDrill"></select></label>
+      </div>
+      <div class="row">
+        <button class="btn" id="drPlay" type="button">▶ Listen</button>
+        <button class="btn" id="drSlow" type="button">Listen slowly</button>
+      </div>
+      <label class="field" for="drAnswer">Price in yen</label>
+      <input type="text" id="drAnswer" inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="For example 380">
+      <div class="row">
+        <button class="btn primary" id="drCheck" type="button">Check</button>
+        <button class="btn" id="drNext" type="button">Skip</button>
+      </div>
+      <div id="drFeedback" role="status" aria-live="polite"></div>
+    </section>
+    <details>
+      <summary>How Japanese numbers are built</summary>
+      <p class="note">Each unit is a digit plus a unit word: 380 is three hundred, eight tens: さんびゃく はちじゅう. Highlighted readings are the irregular ones. 100 is ひゃく and 1,000 is せん with no いち, but 10,000 is いちまん.</p>
+      <div class="tablewrap" id="numTable"></div>
+    </details>
+  </div>
+
+  <div class="view" id="act-signs" hidden>
+    <section class="card" id="signCard" aria-label="Sign deck">
+      <h2>What does the sign mean?</h2>
+      <div class="top"><span id="sgCount"></span></div>
+      <p class="sign" id="sgSign" lang="ja"></p>
+      <div class="choices" id="sgChoices"></div>
+      <div id="sgFeedback" role="status" aria-live="polite"></div>
+      <div class="row"><button class="btn primary" id="sgNext" type="button" hidden>Next sign</button></div>
+    </section>
+  </div>
+
+  <div class="view" id="act-scenario" hidden>
+    <section class="card" id="scCard" aria-label="Scenario">
+      <h2 id="scTitle"></h2>
+      <p class="note" id="scText"></p>
+      <div class="log" id="scLog"></div>
+      <div id="scTurn" role="status" aria-live="polite"></div>
+      <div class="row"><button class="btn" id="scRestart" type="button" hidden>Play it again</button></div>
+    </section>
+  </div>
   </div>
 
   <div class="view" id="setupView" hidden>
@@ -270,9 +379,54 @@ const VOICES = [
   {id:"oren", name:"O-Ren", say:["com.apple.ttsbundle.siri_O-ren_ja-JP_premium","com.apple.ttsbundle.siri_O-ren_ja-JP_compact"]}
 ];
 
+/* Week 2. Prices are not cards: the learner hears them, so they are generated (see
+   numberReading) instead of being written out one by one. */
+const WEEK2_PHRASES = [
+  {k:"いくらですか", r:"ikura desu ka", e:"How much is it?"},
+  {k:"ぜんぶで いくらですか", r:"zenbu de ikura desu ka", e:"How much is it altogether?", s:"全部で いくらですか", alt:["全部でいくらですか"]},
+  {k:"カードは つかえますか", r:"KA-DO wa tsukaemasu ka", e:"Can I use a card?", s:"カードは 使えますか", alt:["カードは使えますか"], soft:["カードわ つかえますか"], tip:"Type the particle は as “ha”: KA-DO ha tsukaemasu ka."},
+  {k:"カードで おねがいします", r:"KA-DO de onegaishimasu", e:"By card, please", s:"カードで お願いします", alt:["カードでお願いします"]},
+  {k:"げんきんで おねがいします", r:"genkin de onegaishimasu", e:"In cash, please", s:"現金で お願いします", alt:["現金でお願いします"]},
+  {k:"はい、おねがいします", r:"hai, onegaishimasu", e:"Yes, please", s:"はい、 お願いします", alt:["はい、お願いします"]},
+  {k:"だいじょうぶです", r:"daijoubu desu", e:"No thank you, I’m fine", s:"大丈夫です", alt:["大丈夫です"]},
+  {k:"ふくろを ください", r:"fukuro wo kudasai", e:"A bag, please", s:"袋を ください", alt:["袋をください"]},
+  {k:"ふくろは だいじょうぶです", r:"fukuro wa daijoubu desu", e:"I don’t need a bag", s:"袋は 大丈夫です", alt:["袋は大丈夫です"], soft:["ふくろわ だいじょうぶです"], tip:"Type the particle は as “ha”: fukuro ha daijoubu desu."},
+  {k:"あたためて ください", r:"atatamete kudasai", e:"Please heat it up", s:"温めて ください", alt:["温めてください"]},
+  {k:"おはしを ください", r:"ohashi wo kudasai", e:"Chopsticks, please", s:"お箸を ください", alt:["お箸をください"]},
+  {k:"レシートを ください", r:"RESHI-TO wo kudasai", e:"A receipt, please"},
+  {k:"ふたつ ください", r:"futatsu kudasai", e:"Two of them, please", s:"二つ ください", alt:["二つください","2つください"]}
+];
+
+/* Things the learner hears but does not say: what staff and announcements say. Same shape
+   as a phrase, plus `note` (why it matters), `v` (the one voice it is recorded in, normal
+   speed only: you hear staff once, at speed) and `reply` (indices into the week's own
+   `phrases`: `ok` are good answers, `bad` are answers to a different question). */
+const WEEK2_HEAR = [
+  {k:"いらっしゃいませ", r:"irasshaimase", e:"Welcome", v:"kyoko",
+   note:"Said to you within a second of entering any shop. There is nothing to answer: it is a greeting to the room."},
+  {k:"ふくろは ごりようですか", r:"fukuro wa goriyou desu ka", e:"Do you need a bag?", s:"袋は ご利用ですか", soft:["ふくろわ ごりようですか"], v:"kyoko",
+   note:"One of the three checkout questions.", reply:{ok:[8,7], bad:[3]}},
+  {k:"おべんとうは あたためますか", r:"obentou wa atatamemasu ka", e:"Shall I heat your bento?", s:"お弁当は 温めますか", soft:["おべんとうわ あたためますか"], v:"kyoko",
+   note:"The second checkout question.", reply:{ok:[5,6], bad:[0]}},
+  {k:"おはしは おつけしますか", r:"ohashi wa otsukeshimasu ka", e:"Shall I put chopsticks in?", s:"お箸は お付けしますか", soft:["おはしわ おつけしますか"], v:"kyoko",
+   note:"The third checkout question.", reply:{ok:[5,6,10], bad:[7]}},
+  {k:"ポイントカードは おもちですか", r:"POINTOKA-DO wa omochi desu ka", e:"Do you have a point card?", s:"ポイントカードは お持ちですか", soft:["ポイントカードわ おもちですか"], v:"kyoko",
+   note:"The one you answer だいじょうぶです to. It sounds alarming if you do not parse it.", reply:{ok:[6], bad:[3,0]}},
+  {k:"ごうけい ごひゃく はちじゅう えんです", r:"goukei gohyaku hachijuu en desu", e:"That’s 580 yen in total", v:"kyoko",
+   note:"The total. Listen for the numbers, not the words around them.", reply:{ok:[3,4], bad:[1]}},
+  {k:"おあずかりします", r:"oazukarishimasu", e:"I’ll take that (said as you hand over money)", s:"お預かりします", v:"kyoko",
+   note:"Said as you pay. The transaction is not over yet."},
+  {k:"おつりです", r:"otsuri desu", e:"Here’s your change", s:"お釣りです", v:"kyoko",
+   note:"Tells you the transaction is over."},
+  {k:"ありがとうございました", r:"arigatou gozaimashita", e:"Thank you (as you leave)", v:"kyoko",
+   note:"Compare week 1’s ありがとうございます: ました is the past form, said as you go. You will hear it at every till."}
+];
+
 /* The course: eight weeks, no dates, so it fits any departure. A week with `phrases` has
    practice cards. One without shows `preview` (a first look at its key phrases) until its
-   cards are written. `kanji` is for recognition only, about 30 signs in all. */
+   cards are written. `kanji` is for recognition only, about 30 signs in all. A promoted
+   week can also have `review` (week 1 cards repeated at the start of its deck, as
+   [week, index into that week's phrases]), `hear`, `drill` and `scenario.turns`. */
 const WEEKS = [
   {n:1, title:"Meeting people",
    summary:"Greet people, introduce yourself, and say sorry, thank you and excuse me. The phrases you will use in your first five minutes in Japan.",
@@ -282,19 +436,52 @@ const WEEKS = [
    phrases:WEEK1_PHRASES},
   {n:2, title:"Numbers, money and first signs",
    summary:"Count, understand prices in yen, pay at a convenience store, and read the first signs you will meet in every station.",
-   goals:["Say and understand numbers up to 100","Understand a price such as 380 yen when you hear it","Pay at a konbini: bag, heating, card","Recognise the exit, entrance, station and men’s and women’s signs"],
-   kanji:[{k:"出口",e:"exit"},{k:"入口",e:"entrance"},{k:"駅",e:"station"},{k:"男",e:"men"},{k:"女",e:"women"}],
-   scenario:{title:"Convenience store checkout", text:"Buy a drink and a snack, say whether you need a bag, and pay."},
-   preview:[
-     {k:"いくらですか", e:"How much is it?"},
-     {k:"さんびゃく はちじゅう えんです", e:"It is 380 yen"},
-     {k:"カードは つかえますか", e:"Can I use a card?"},
-     {k:"ふくろは いりません", e:"I don’t need a bag"},
-     {k:"あたためますか", e:"Shall I heat it up? (what the clerk asks)"}]},
+   goals:["Hear a price between 100 and 15,000 yen and type the number, irregular readings included","Get through a konbini checkout: answer the questions about a bag, heating and a point card, and say how you are paying","Ask what something costs, and what the total is","Recognise 出口, 入口, 駅, 男, 女, 円 and 税込 on sight"],
+   grammar:"Three frames carry the week and you only swap the noun: ～を ください for things, ～で おねがいします for how you pay, and ～て ください for asking someone to do something (あたためて ください).",
+   kanji:[
+     {k:"出口",e:"exit",hint:"出 means go out and 口 is an opening: the way out."},
+     {k:"入口",e:"entrance",hint:"入 means enter and 口 is an opening: the way in. It looks like 出口 turned around."},
+     {k:"駅",e:"station",hint:"Often the last character of a station’s name when it is written out: 東京駅 is Tokyo Station."},
+     {k:"男",e:"men",hint:"A field (田) above strength (力). You will see it on toilet doors."},
+     {k:"女",e:"women",hint:"A figure with folded arms, kneeling. The other toilet door."},
+     {k:"円",e:"yen",hint:"Also means round, like a coin. On every price tag."},
+     {k:"税込",e:"tax included",hint:"税 is tax and 込 is included. 税抜 (tax not included) is the other one you will see on price tags."}],
+   scenario:{title:"Convenience store checkout", text:"Buy a drink and a snack, say whether you need a bag, and pay.",
+     turns:[
+       {who:"clerk", say:["いらっしゃいませ"]},
+       {who:"you", options:[
+         {label:"Say nothing and put your items on the counter", ok:true, why:"Right. いらっしゃいませ is a greeting to the whole shop. No reply is expected."},
+         {k:"いらっしゃいませ", e:"Welcome", ok:false, why:"That is what staff say to you. Saying it back would welcome the clerk to their own shop."},
+         {k:"こんにちは", e:"Hello", ok:true, why:"Harmless, and nobody will mind. It just is not needed."}]},
+       {who:"clerk", say:["おべんとうは あたためますか"]},
+       {who:"you", options:[
+         {k:"はい、おねがいします", e:"Yes, please", ok:true, why:"Good: heated. Saying no thank you would have been right too. It is a real choice, not a trick."},
+         {k:"だいじょうぶです", e:"No thank you", ok:true, why:"Good: not heated. Saying yes, please would have been right too. It is a real choice, not a trick."},
+         {k:"いくらですか", e:"How much is it?", ok:false, why:"That answers a different question. The clerk will ask again."}]},
+       {who:"clerk", say:["ふくろは ごりようですか"]},
+       {who:"you", options:[
+         {k:"ふくろは だいじょうぶです", e:"I don’t need a bag", ok:true, why:"Good: no bag."},
+         {k:"ふくろを ください", e:"A bag, please", ok:true, why:"Good, and you will be charged for it."},
+         {k:"はい、おねがいします", e:"Yes, please", ok:true, why:"It works, and you will get a bag. A little ambiguous: ふくろを ください is clearer."}]},
+       {who:"clerk", say:["ごうけい ごひゃく はちじゅう えんです"]},
+       {who:"you", price:580, options:[
+         {k:"カードで おねがいします", e:"By card, please", ok:true, why:"Good."},
+         {k:"げんきんで おねがいします", e:"In cash, please", ok:true, why:"Good."},
+         {k:"ぜんぶで いくらですか", e:"How much is it altogether?", ok:false, why:"You were just told the total."}]},
+       {who:"clerk", say:["おあずかりします","おつりです"]},
+       {who:"you", options:[
+         {k:"ありがとうございます", e:"Thank you", ok:true, why:"Good."},
+         {k:"レシートを ください", e:"A receipt, please", ok:true, why:"Good."},
+         {k:"ごちそうさまでした", e:"Thank you for the meal", ok:false, why:"That belongs in a restaurant, after eating. It is the most common tourist mix-up."}]}
+     ]},
+   drill:"price",
+   review:[[1,8],[1,10],[1,7]],
+   phrases:WEEK2_PHRASES,
+   hear:WEEK2_HEAR},
   {n:3, title:"Shopping",
    summary:"Point at things, ask what they cost and ask for what you want. これ, それ, あれ and ～をください cover most of a shopping trip.",
    goals:["Point things out with これ, それ and あれ","Ask for something with ～をください","Ask the price and ask for another size","Ask for tax-free shopping"],
-   kanji:[{k:"円",e:"yen"},{k:"店",e:"shop"},{k:"大",e:"large"},{k:"小",e:"small"},{k:"無料",e:"free of charge"},{k:"割引",e:"discount"}],
+   kanji:[{k:"大",e:"large"},{k:"小",e:"small"},{k:"無料",e:"free of charge"},{k:"割引",e:"discount"},{k:"売切",e:"sold out"}],
    scenario:{title:"Shopping", text:"Look around a shop, ask for a size you cannot see, try something on and pay, tax-free if you qualify."},
    preview:[
      {k:"これを ください", e:"This one, please"},
@@ -462,21 +649,89 @@ function fillPhrase(p, vals){
   return out;
 }
 
-/* A week's cards. Templates need a profile and are left out without one. */
-function weekPhrases(w, vals){
-  return (w.phrases || []).filter(p => !p.slot || vals).map(p => p.slot ? fillPhrase(p, vals) : p);
+/* A week's deck: its review cards (earlier cards, repeated), then its own cards. Templates
+   need a profile and are left out without one. Review cards may not be templates. */
+function reviewCards(w){
+  return (w.review || []).map(([n, i]) => Object.assign({}, WEEKS[n - 1].phrases[i], {review:true}));
 }
+function weekPhrases(w, vals){
+  const own = (w.phrases || []).filter(p => !p.slot || vals).map(p => p.slot ? fillPhrase(p, vals) : p);
+  return reviewCards(w).concat(own);
+}
+/* How many cards a week's deck has, with or without a profile. */
+function deckSize(w){ return (w.review || []).length + (w.phrases || []).length; }
 function needsProfile(w){ return (w.phrases || []).some(p => p.slot); }
 
-/* Every phrase that can have a recording: every country and job, but no names. */
+/* Every phrase that has a full set of recordings (all voices, normal and slow): every
+   country and job but no names, and the generated prices. Review cards are repeats, so
+   they are not listed again. */
 function allPhrases(){
   const out = [];
-  for (const w of WEEKS) for (const p of w.phrases || []) {
-    if (!p.slot) out.push(p);
-    else if (p.slot === "country") COUNTRIES.forEach(c => out.push(fillPhrase(p, {country:c})));
-    else if (p.slot === "job") JOBS.forEach(j => out.push(fillPhrase(p, {job:j})));
+  for (const w of WEEKS) {
+    for (const p of w.phrases || []) {
+      if (!p.slot) out.push(p);
+      else if (p.slot === "country") COUNTRIES.forEach(c => out.push(fillPhrase(p, {country:c})));
+      else if (p.slot === "job") JOBS.forEach(j => out.push(fillPhrase(p, {job:j})));
+    }
+    if (w.drill === "price") PRICES.forEach(n => out.push(priceItem(n)));
   }
   return out;
+}
+/* What is only heard: recorded in one voice, normal speed only. */
+function hearPhrases(){ return WEEKS.flatMap(w => w.hear || []); }
+
+/* ---- numbers and prices ----
+   Readings are generated, one table per unit, so the irregular ones live in exactly one
+   place. 100 is ひゃく and 1000 is せん (no いち), but 10000 is いちまん (with it). */
+const NUM = {
+  man:   [null,["いちまん","ichiman"],["にまん","niman"],["さんまん","sanman"],["よんまん","yonman"],["ごまん","goman"],["ろくまん","rokuman"],["ななまん","nanaman"],["はちまん","hachiman"],["きゅうまん","kyuuman"]],
+  sen:   [null,["せん","sen"],["にせん","nisen"],["さんぜん","sanzen"],["よんせん","yonsen"],["ごせん","gosen"],["ろくせん","rokusen"],["ななせん","nanasen"],["はっせん","hassen"],["きゅうせん","kyuusen"]],
+  hyaku: [null,["ひゃく","hyaku"],["にひゃく","nihyaku"],["さんびゃく","sanbyaku"],["よんひゃく","yonhyaku"],["ごひゃく","gohyaku"],["ろっぴゃく","roppyaku"],["ななひゃく","nanahyaku"],["はっぴゃく","happyaku"],["きゅうひゃく","kyuuhyaku"]],
+  juu:   [null,["じゅう","juu"],["にじゅう","nijuu"],["さんじゅう","sanjuu"],["よんじゅう","yonjuu"],["ごじゅう","gojuu"],["ろくじゅう","rokujuu"],["ななじゅう","nanajuu"],["はちじゅう","hachijuu"],["きゅうじゅう","kyuujuu"]],
+  ichi:  [null,["いち","ichi"],["に","ni"],["さん","san"],["よん","yon"],["ご","go"],["ろく","roku"],["なな","nana"],["はち","hachi"],["きゅう","kyuu"]]
+};
+/* The readings that are not simply the digit plus the unit, for the reference table. */
+const NUM_IRREGULAR = {hyaku:[3,6,8], sen:[3,8]};
+const NUM_UNITS = [[10000,"man"],[1000,"sen"],[100,"hyaku"],[10,"juu"],[1,"ichi"]];
+
+function numberReading(n){
+  const parts = [];
+  NUM_UNITS.forEach(([unit, key]) => {
+    const d = Math.floor(n / unit) % 10;
+    if (d) parts.push(NUM[key][d]);
+  });
+  return {k:parts.map(p => p[0]).join(" "), r:parts.map(p => p[1]).join(" ")};
+}
+/* A price as a phrase, for the drill and for make-audio.js. Spaces are the slow take's pauses. */
+function priceItem(n){
+  const {k, r} = numberReading(n);
+  return {k:k + " えんです", r:r + " en desu", e:n.toLocaleString("en-US") + " yen", n};
+}
+/* 42 prices chosen so that every irregular reading appears at least twice and every one
+   looks like a real shelf price. */
+const PRICES = [100,120,150,180,198,250,280,300,350,380,420,480,500,550,600,650,680,700,780,
+  800,850,880,900,980,1000,1200,1280,1500,1800,2000,2500,3000,3800,4500,5000,6000,6800,8000,
+  8800,10000,12000,15000];
+
+/* What the learner typed, as a whole number of yen, or null. Accepts 1,280 and ¥1280 and 1280円. */
+function parseYen(s){
+  const t = s.normalize("NFKC").replace(/[,\s¥円]|yen/gi, "");
+  return /^\d{1,6}$/.test(t) ? +t : null;
+}
+/* A hint for a wrong price that points at where to listen, and never gives the answer. */
+const UNIT_NAMES = ["ones", "tens (じゅう)", "hundreds (ひゃく)", "thousands (せん)", "ten-thousands (まん)"];
+function priceHint(correct, given){
+  const c = String(correct), g = String(given);
+  if (c.length !== g.length) return "The number is a different size. Listen for the units: まん (ten thousand), せん (thousand), ひゃく (hundred), じゅう (ten).";
+  for (let i = 0; i < c.length; i++) {
+    if (c[i] === g[i]) continue;
+    const unit = c.length - 1 - i, d = +c[i];
+    let msg = "Listen again for the " + UNIT_NAMES[unit] + " part.";
+    if (unit === 2 && [3,6,8].includes(d)) msg += " The hundreds for 3, 6 and 8 are irregular: さんびゃく, ろっぴゃく, はっぴゃく.";
+    if (unit === 3 && [3,8].includes(d)) msg += " The thousands for 3 and 8 are irregular: さんぜん, はっせん.";
+    return msg;
+  }
+  return "";
 }
 
 /* Typed romaji to kana. A name is always katakana, whatever case it was typed in. */
@@ -645,8 +900,8 @@ function init(){
      not arrive already ticked off. The fixed cards keep their progress. */
   function forgetPersonalProgress(){
     WEEKS.filter(needsProfile).forEach(w => {
-      const d = loadDone(w.n);
-      w.phrases.forEach((p, i) => { if (p.slot) d.delete(i); });
+      const d = loadDone(w.n), off = (w.review || []).length;
+      w.phrases.forEach((p, i) => { if (p.slot) d.delete(i + off); });
       try { localStorage.setItem(doneKey(w.n), JSON.stringify([...d])); } catch (e) {}
     });
   }
@@ -659,10 +914,15 @@ function init(){
   const KEY_VOICE = "jpt-voice";
   try { $("romajiToggle").checked = localStorage.getItem(KEY_ROMAJI) === "1"; } catch (e) {}
 
-  VOICES.forEach(v => $("voice").add(new Option(v.name, v.id)));
+  /* The voice is chosen on the card and again in the price drill: two selects, one setting. */
+  VOICES.forEach(v => { $("voice").add(new Option(v.name, v.id)); $("voiceDrill").add(new Option(v.name, v.id)); });
+  function setVoice(id){
+    $("voice").value = $("voiceDrill").value = id;
+    try { localStorage.setItem(KEY_VOICE, id); } catch (e) {}
+  }
   try {
     const saved = localStorage.getItem(KEY_VOICE);
-    if (VOICES.some(v => v.id === saved)) $("voice").value = saved;
+    if (VOICES.some(v => v.id === saved)) $("voice").value = $("voiceDrill").value = saved;
   } catch (e) {}
 
   function kanaVisible(){ return !$("hide").checked || revealed; }
@@ -670,7 +930,7 @@ function init(){
 
   function renderCard(){
     const p = phrases[idx];
-    $("counter").textContent = "Phrase " + (idx + 1) + " of " + phrases.length + " · " + done.size + " done";
+    $("counter").textContent = "Phrase " + (idx + 1) + " of " + phrases.length + (p.review ? " · review" : "") + " · " + done.size + " done";
     $("english").textContent = p.e;
     const show = kanaVisible();
     $("kana").textContent = show ? p.k : "・・・・・";
@@ -695,6 +955,7 @@ function init(){
       const en = document.createElement("span"); en.className = "en"; en.textContent = p.e;
       b.append(jp, en);
       if (done.has(i)) { const c = document.createElement("span"); c.className = "chip"; c.textContent = "Done"; b.append(c); }
+      else if (p.review) { const c = document.createElement("span"); c.className = "chip muted"; c.textContent = "Review"; b.append(c); }
       b.addEventListener("click", () => go(i));
       li.append(b);
       ol.append(li);
@@ -805,14 +1066,39 @@ function init(){
 
   function speak(slow){
     const p = phrases[idx];
-    try { player.pause(); } catch (e) {}
-    if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+    stopClips();
     if (p.live) { synthesize(p, slow); return; }
     player.src = "audio/" + $("voice").value + "/" + audioId(p) + (slow ? ".slow" : "") + ".m4a";
     /* A newer click interrupts the older play() with an AbortError. That is not a missing
        file, and falling back on it would speak over the recording that replaced it. */
     player.play().then(() => { $("voiceMsg").hidden = true; })
       .catch(err => { if (!err || err.name !== "AbortError") synthesize(p, slow); });
+  }
+
+  /* Recordings played one after another (a dialogue line can be two clips). A newer call
+     cancels the older chain, so sequences never overlap. Anything that stops audio goes
+     through stopClips. */
+  let clipSeq = 0;
+  const audioUrl = (p, slow, voice) => "audio/" + (voice || p.v || $("voice").value) + "/" + audioId(p) + (slow ? ".slow" : "") + ".m4a";
+  function stopClips(){
+    clipSeq++;
+    player.onended = null;
+    try { player.pause(); } catch (e) {}
+    if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+  }
+  function playClips(items, slow, voice){
+    stopClips();
+    const my = clipSeq;
+    const step = i => {
+      if (my !== clipSeq || i >= items.length) return;
+      player.onended = () => step(i + 1);
+      player.src = audioUrl(items[i], slow, voice);
+      player.play().catch(err => {
+        if (my !== clipSeq || (err && err.name === "AbortError")) return;
+        synthesize(items[i], slow);
+      });
+    };
+    step(0);
   }
 
   /* Speech input. The transcript goes into the answer field and through checkAnswer, so
@@ -843,8 +1129,7 @@ function init(){
   function startMic(){
     if (rec) { try { rec.stop(); } catch (e) {} return; }
     /* Do not let the recognizer hear our own playback, and iOS cannot do both at once. */
-    try { player.pause(); } catch (e) {}
-    if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+    stopClips();
     const r = new Recognition();
     r.lang = "ja-JP"; r.maxAlternatives = 5; r.interimResults = true; r.continuous = false;
     let heard = false, failed = false;
@@ -883,11 +1168,19 @@ function init(){
   $("listen").addEventListener("click", () => speak(false));
   $("slow").addEventListener("click", () => speak(true));
   $("reveal").addEventListener("click", () => { revealed = true; renderCard(); });
+  $("qzPlay").addEventListener("click", () => playClips([quizItem()]));
+  $("qzNext").addEventListener("click", nextQuiz);
+  $("drPlay").addEventListener("click", () => drPlay(false));
+  $("drSlow").addEventListener("click", () => drPlay(true));
+  $("drCheck").addEventListener("click", drCheck);
+  $("drNext").addEventListener("click", () => nextPrice());
+  $("drAnswer").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); drCheck(); } });
+  $("sgNext").addEventListener("click", nextSign);
+  $("scRestart").addEventListener("click", startScenario);
   if (Recognition) { $("mic").hidden = false; $("mic").addEventListener("click", startMic); }
   $("hide").addEventListener("change", () => { revealed = false; renderCard(); });
-  $("voice").addEventListener("change", () => {
-    try { localStorage.setItem(KEY_VOICE, $("voice").value); } catch (e) {}
-  });
+  $("voice").addEventListener("change", () => setVoice($("voice").value));
+  $("voiceDrill").addEventListener("change", () => setVoice($("voiceDrill").value));
   $("romajiToggle").addEventListener("change", () => {
     try { localStorage.setItem(KEY_ROMAJI, $("romajiToggle").checked ? "1" : "0"); } catch (e) {}
     renderCard();
@@ -949,7 +1242,7 @@ function init(){
       const jp = el("span", "jp");
       jp.append(el("b", null, "Week " + w.n), w.title);
       a.append(jp, el("span", "en", w.summary));
-      const total = (w.phrases || []).length;
+      const total = deckSize(w);
       if (total) {
         const n = loadDone(w.n).size;
         a.append(el("span", "chip", n >= total ? "Done" : n + " / " + total));
@@ -1006,8 +1299,349 @@ function init(){
     }
   }
 
+  /* ---- activities: a week can have several, shown one at a time ---- */
+  const ACTS = ["phrases", "listen", "numbers", "signs", "scenario"];
+  const SIGN_GOAL = 2;   // clean rounds of the sign deck that count as done
+  const actsKey = n => "jpt-week" + n + "-acts";
+  const loadActs = n => { try { return JSON.parse(localStorage.getItem(actsKey(n)) || "{}") || {}; } catch (e) { return {}; } };
+  const saveActs = () => { try { localStorage.setItem(actsKey(week.n), JSON.stringify(acts)); } catch (e) {} };
+  let acts = {}, activity = "phrases";
+  const shuffle = a => {
+    const b = a.slice();
+    for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; }
+    return b;
+  };
+  /* A feedback box in the same style as the phrase card's. */
+  function say(box, cls, lines){
+    box.textContent = "";
+    const d = el("div", "fb " + cls);
+    lines.forEach(l => d.append(el("p", null, l)));
+    box.append(d);
+  }
+  const choiceButton = (...kids) => { const b = el("button", "item"); b.type = "button"; b.append(...kids); return b; };
+  const jpSpan = text => { const s = el("span", "jp", text); s.lang = "ja"; return s; };
+
+  function activitiesFor(w){
+    const list = [];
+    if (deckSize(w)) list.push(["phrases", "Phrases"]);
+    if ((w.hear || []).length) list.push(["listen", "Listening"]);
+    if (w.drill === "price") list.push(["numbers", "Numbers"]);
+    if (deckSize(w) && w.kanji.length) list.push(["signs", "Signs"]);
+    if (w.scenario.turns) list.push(["scenario", "Scenario"]);
+    return list;
+  }
+  const actDone = id => id === "signs" ? (acts.signs || 0) >= SIGN_GOAL : id === "scenario" ? !!acts.scenario : false;
+
+  function renderTabs(list){
+    const bar = $("tabs");
+    bar.textContent = "";
+    bar.hidden = list.length < 2;
+    list.forEach(([id, label]) => {
+      const b = el("button", "tab", label + (actDone(id) ? " ✓" : ""));
+      b.type = "button"; b.id = "tab-" + id;
+      b.setAttribute("role", "tab");
+      b.setAttribute("aria-selected", id === activity ? "true" : "false");
+      b.addEventListener("click", () => showActivity(id));
+      bar.append(b);
+    });
+  }
+
+  function showActivity(id){
+    stopMic(); stopClips();
+    activity = id;
+    ACTS.forEach(a => { $("act-" + a).hidden = a !== id; });
+    renderTabs(activitiesFor(week));
+    if (id === "listen") startQuiz();
+    else if (id === "numbers") startDrill();
+    else if (id === "signs") startSigns();
+    else if (id === "scenario") startScenario();
+  }
+
+  /* ---- listening: "what did they say?" and the list of what you will hear ---- */
+  let qz = {bag:[], i:-1, right:0, total:0};
+  const quizItem = () => week.hear[qz.i];
+
+  function startQuiz(){
+    qz = {bag:[], i:-1, right:0, total:0};
+    nextQuiz();
+  }
+  function nextQuiz(){
+    if (!qz.bag.length) qz.bag = shuffle(week.hear.map((h, i) => i));
+    let i = qz.bag.pop();
+    if (i === qz.i && qz.bag.length) { qz.bag.unshift(i); i = qz.bag.pop(); }
+    qz.i = i;
+    const h = quizItem();
+    $("qzFeedback").textContent = "";
+    $("qzNext").hidden = true;
+    $("qzStep2").hidden = true;
+    $("qzCount").textContent = qz.total ? "Understood: " + qz.right + " of " + qz.total : "";
+    const box = $("qzMeaning");
+    box.textContent = "";
+    shuffle([h].concat(shuffle(week.hear.filter(x => x !== h && x.e !== h.e)).slice(0, 2))).forEach(o => {
+      const b = choiceButton(el("span", "jp", o.e));
+      b.addEventListener("click", () => answerMeaning(b, o === h));
+      box.append(b);
+    });
+    playClips([h]);
+  }
+  function answerMeaning(btn, ok){
+    const h = quizItem();
+    [...$("qzMeaning").children].forEach(c => { c.disabled = true; });
+    qz.total++;
+    if (ok) qz.right++;
+    $("qzCount").textContent = "Understood: " + qz.right + " of " + qz.total;
+    btn.classList.add(ok ? "right" : "wrong");
+    if (!ok) [...$("qzMeaning").children].find(c => c.textContent === h.e).classList.add("right");
+    if (ok && h.reply) { showReplies(h); return; }
+    say($("qzFeedback"), ok ? "ok" : "miss", [(ok ? "Yes: " : "It was: ") + h.k + " = " + h.e, h.note]);
+    $("qzNext").hidden = false;
+  }
+  function showReplies(h){
+    $("qzStep2").hidden = false;
+    const ok = shuffle(h.reply.ok)[0];
+    const box = $("qzReply");
+    box.textContent = "";
+    shuffle([ok].concat(shuffle(h.reply.bad).slice(0, 2))).forEach(i => {
+      const p = week.phrases[i];
+      const b = choiceButton(jpSpan(p.k), el("span", "en", p.e));
+      b.addEventListener("click", () => {
+        if (h.reply.ok.includes(i)) {
+          [...box.children].forEach(c => { c.disabled = true; });
+          b.classList.add("right");
+          say($("qzFeedback"), "ok", ["Good. " + h.k + " = " + h.e, h.note]);
+          $("qzNext").hidden = false;
+        } else {
+          b.classList.add("wrong"); b.disabled = true;
+          say($("qzFeedback"), "miss", ["That answers a different question. Try another."]);
+        }
+      });
+      box.append(b);
+    });
+  }
+
+  function buildHearList(){
+    const ol = $("hearList");
+    ol.textContent = "";
+    (week.hear || []).forEach(h => {
+      const li = el("li", "hrow");
+      const play = el("button", "btn icon", "▶");
+      play.type = "button";
+      play.setAttribute("aria-label", "Play: " + h.k);
+      play.addEventListener("click", () => playClips([h]));
+      const more = el("div", "more");
+      more.hidden = true;
+      more.append(el("span", null, h.e), el("p", "note", h.note));
+      const toggle = el("button", "linkbtn", "Show meaning");
+      toggle.type = "button";
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.addEventListener("click", () => {
+        more.hidden = !more.hidden;
+        toggle.textContent = more.hidden ? "Show meaning" : "Hide meaning";
+        toggle.setAttribute("aria-expanded", more.hidden ? "false" : "true");
+      });
+      li.append(play, jpSpan(h.k), toggle, more);
+      ol.append(li);
+    });
+  }
+
+  /* ---- numbers: type the price you hear ---- */
+  let dr = {bag:[], n:0, item:null, tries:0, right:0, total:0, settled:false};
+  function startDrill(){
+    dr = {bag:[], n:0, item:null, tries:0, right:0, total:0, settled:false};
+    nextPrice(false);
+  }
+  function nextPrice(play){
+    if (!dr.bag.length) dr.bag = shuffle(PRICES);
+    let n = dr.bag.pop();
+    if (n === dr.n && dr.bag.length) { dr.bag.unshift(n); n = dr.bag.pop(); }
+    dr.n = n; dr.item = priceItem(n); dr.tries = 0; dr.settled = false;
+    $("drAnswer").value = "";
+    $("drFeedback").textContent = "";
+    $("drCheck").textContent = "Check";
+    $("drCount").textContent = dr.total ? "Right first time: " + dr.right + " of " + dr.total : "";
+    if (play !== false) drPlay(false);
+  }
+  const drPlay = slow => playClips([dr.item], slow, $("voice").value);
+  function drCheck(){
+    if (dr.settled) { nextPrice(); $("drAnswer").focus(); return; }
+    const v = parseYen($("drAnswer").value);
+    if (v === null) { say($("drFeedback"), "miss", ["Type the price as digits, for example 380."]); return; }
+    const reading = dr.item.k + "  (" + dr.item.r + ")";
+    if (v === dr.n) {
+      dr.settled = true; dr.total++;
+      if (dr.tries === 0) dr.right++;
+      say($("drFeedback"), "ok", ["Correct: " + dr.item.e + ".", reading]);
+    } else if (++dr.tries >= 3) {
+      dr.settled = true; dr.total++;
+      say($("drFeedback"), "miss", ["It was " + dr.item.e + ".", reading]);
+    } else {
+      say($("drFeedback"), "miss", ["Not quite.", priceHint(dr.n, v)]);
+    }
+    $("drCount").textContent = "Right first time: " + dr.right + " of " + dr.total;
+    if (dr.settled) $("drCheck").textContent = "Next price";
+  }
+
+  /* The reference table: digits down, units across, irregular readings highlighted. */
+  function buildNumberTable(){
+    const box = $("numTable");
+    box.textContent = "";
+    if (week.drill !== "price") return;
+    const t = el("table", "nums"), head = el("tr");
+    const cols = [[1,"ichi","ones"],[10,"juu","tens"],[100,"hyaku","hundreds"],[1000,"sen","thousands"],[10000,"man","ten thousands"]];
+    head.append(el("th", null, ""));
+    cols.forEach(c => head.append(el("th", null, c[2])));
+    t.append(head);
+    for (let d = 1; d <= 9; d++) {
+      const tr = el("tr");
+      tr.append(el("th", null, String(d)));
+      cols.forEach(([unit, key]) => {
+        const td = el("td", (NUM_IRREGULAR[key] || []).includes(d) ? "irr" : "");
+        td.append(NUM[key][d][0], el("span", null, (d * unit).toLocaleString("en-US")));
+        tr.append(td);
+      });
+      t.append(tr);
+    }
+    box.append(t);
+  }
+
+  /* ---- signs: pick the meaning. A clean round (no slips) counts; two clean rounds is done. ---- */
+  let sg = {round:[], i:-1, clean:true, over:false};
+  const unlockedSigns = w => WEEKS.filter(x => x.n <= w.n && deckSize(x)).flatMap(x => x.kanji);
+  function startSigns(){
+    sg = {round:shuffle(week.kanji), i:-1, clean:true, over:false};
+    nextSign();
+  }
+  function nextSign(){
+    if (sg.over) { startSigns(); return; }
+    $("sgFeedback").textContent = "";
+    $("sgNext").hidden = true;
+    $("sgNext").textContent = "Next sign";
+    if (++sg.i >= sg.round.length) { endSignRound(); return; }
+    const s = sg.round[sg.i];
+    $("sgSign").textContent = s.k;
+    $("sgCount").textContent = "Sign " + (sg.i + 1) + " of " + sg.round.length + " · clean rounds " + Math.min(acts.signs || 0, SIGN_GOAL) + " of " + SIGN_GOAL;
+    const box = $("sgChoices");
+    box.textContent = "";
+    shuffle([s].concat(shuffle(unlockedSigns(week).filter(x => x.e !== s.e)).slice(0, 3))).forEach(o => {
+      const b = choiceButton(el("span", "jp", o.e));
+      b.addEventListener("click", () => {
+        const ok = o === s;
+        [...box.children].forEach(c => { c.disabled = true; });
+        b.classList.add(ok ? "right" : "wrong");
+        if (!ok) { sg.clean = false; [...box.children].find(c => c.textContent === s.e).classList.add("right"); }
+        say($("sgFeedback"), ok ? "ok" : "miss", [ok ? "Right: " + s.e + "." : "It means “" + s.e + "”.", s.hint || ""].filter(Boolean));
+        $("sgNext").hidden = false;
+      });
+      box.append(b);
+    });
+  }
+  function endSignRound(){
+    sg.over = true;
+    if (sg.clean) { acts.signs = (acts.signs || 0) + 1; saveActs(); renderTabs(activitiesFor(week)); }
+    $("sgSign").textContent = sg.clean ? "✓" : "↻";
+    $("sgChoices").textContent = "";
+    $("sgCount").textContent = "Clean rounds " + Math.min(acts.signs || 0, SIGN_GOAL) + " of " + SIGN_GOAL;
+    say($("sgFeedback"), sg.clean ? "ok" : "miss", [sg.clean
+      ? ((acts.signs || 0) >= SIGN_GOAL ? "A clean round, and the deck is done. Play one now and then to keep the signs fresh." : "A clean round. One more like that and the deck is done.")
+      : "A few slips. Another round?"]);
+    $("sgNext").textContent = "Another round";
+    $("sgNext").hidden = false;
+  }
+
+  /* ---- scenario: a scripted conversation ---- */
+  let sc = {i:0, priceOk:false, tries:0};
+  const hearByK = k => week.hear.find(h => h.k === k);
+  const logLine = text => { $("scLog").append(text); $("scTurn").scrollIntoView({block:"nearest"}); };
+
+  function startScenario(){
+    const s = week.scenario;
+    $("scTitle").textContent = "Scenario: " + s.title;
+    $("scText").textContent = s.text + " Listen to the clerk, then choose what you say.";
+    $("scLog").textContent = "";
+    $("scTurn").textContent = "";
+    $("scRestart").hidden = true;
+    sc = {i:0, priceOk:false, tries:0};
+    stepScenario();
+  }
+  function stepScenario(){
+    const t = week.scenario.turns[sc.i];
+    $("scTurn").textContent = "";
+    if (!t) { finishScenario(); return; }
+    if (t.who === "clerk") {
+      const items = t.say.map(hearByK), b = el("div", "bub clerk");
+      items.forEach(h => {
+        const line = el("div", "line"), pb = el("button", "btn icon", "▶");
+        pb.type = "button";
+        pb.setAttribute("aria-label", "Play: " + h.k);
+        pb.addEventListener("click", () => playClips([h]));
+        line.append(pb, jpSpan(h.k), el("span", "en", h.e));
+        b.append(line);
+      });
+      logLine(b);
+      playClips(items);
+      sc.i++;
+      stepScenario();
+      return;
+    }
+    if (t.price && !sc.priceOk) scenarioPrice(t); else scenarioChoice(t);
+  }
+  /* A turn that starts with hearing a number: type it before choosing what to say. */
+  function scenarioPrice(t){
+    const box = $("scTurn"), wrap = el("div", "sec"), fb = el("div");
+    const input = el("input");
+    input.type = "text"; input.inputMode = "numeric"; input.autocomplete = "off"; input.placeholder = "For example 380";
+    input.setAttribute("aria-label", "Price in yen");
+    const check = el("button", "btn primary", "Check"), again = el("button", "btn", "▶ Hear it again");
+    check.type = again.type = "button";
+    const row = el("div", "row");
+    row.append(check, again);
+    wrap.append(el("p", "english", "How much did they say? Type the price in yen."), input, row, fb);
+    box.append(wrap);
+    const prev = week.scenario.turns[sc.i - 1];
+    again.addEventListener("click", () => playClips(prev.say.map(hearByK)));
+    const submit = () => {
+      const v = parseYen(input.value);
+      if (v === null) { say(fb, "miss", ["Type the price as digits, for example 380."]); return; }
+      if (v === t.price || ++sc.tries >= 3) {
+        const item = priceItem(t.price);
+        sc.priceOk = true; sc.tries = 0;
+        logLine(el("p", "why", v === t.price ? "You heard it: " + item.e + "." : "It was " + item.e + " (" + item.k + ")."));
+        stepScenario();
+      } else {
+        say(fb, "miss", ["Not quite.", priceHint(t.price, v)]);
+      }
+    };
+    check.addEventListener("click", submit);
+    input.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); submit(); } });
+  }
+  function scenarioChoice(t){
+    const box = $("scTurn"), wrap = el("div", "sec"), choices = el("div", "choices"), fb = el("div");
+    wrap.append(el("p", "english", "What do you say?"), choices, fb);
+    box.append(wrap);
+    shuffle(t.options).forEach(o => {
+      const b = o.k ? choiceButton(jpSpan(o.k), el("span", "en", o.e)) : choiceButton(el("span", "jp", o.label));
+      b.addEventListener("click", () => {
+        if (!o.ok) { b.classList.add("wrong"); b.disabled = true; say(fb, "miss", [o.why]); return; }
+        const you = el("div", "bub you");
+        if (o.k) you.append(jpSpan(o.k), el("span", "en", o.e)); else you.append(el("span", null, o.label));
+        logLine(you);
+        logLine(el("p", "why", o.why));
+        sc.i++; sc.priceOk = false; sc.tries = 0;
+        stepScenario();
+      });
+      choices.append(b);
+    });
+    $("scTurn").scrollIntoView({block:"nearest"});
+  }
+  function finishScenario(){
+    acts.scenario = true; saveActs();
+    renderTabs(activitiesFor(week));
+    say($("scTurn"), "ok", ["Done: a whole checkout, start to finish."]);
+    $("scRestart").hidden = false;
+  }
+
   function openWeek(w){
-    week = w; phrases = weekPhrases(w, vals); done = loadDone(w.n);
+    week = w; phrases = weekPhrases(w, vals); done = loadDone(w.n); acts = loadActs(w.n);
     document.title = "Week " + w.n + ": " + w.title + " · Japan Phrase Trainer";
     $("weekNo").textContent = "Week " + w.n + " of " + WEEKS.length;
     $("weekTitle").textContent = w.title;
@@ -1015,6 +1649,15 @@ function init(){
     const practice = phrases.length > 0;
     $("practice").hidden = $("listSection").hidden = $("helpTyping").hidden = !practice;
     if (practice) go(0); else $("list").textContent = "";
+    buildHearList();
+    buildNumberTable();
+    const list = activitiesFor(w);
+    if (!list.length) {   // an outline: nothing to practise yet
+      ACTS.forEach(a => { $("act-" + a).hidden = true; });
+      renderTabs([]);
+      return;
+    }
+    showActivity(list[0][0]);
   }
 
   /* ---- setup form ---- */
@@ -1098,8 +1741,7 @@ function init(){
     const setup = h === "#setup";
     if (!setup) setupReturn = "#";
     stopMic();
-    try { player.pause(); } catch (e) {}
-    if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+    stopClips();
     $("overview").hidden = !!w || setup;
     $("weekView").hidden = !w;
     $("setupView").hidden = !setup;

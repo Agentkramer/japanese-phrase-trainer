@@ -2,8 +2,8 @@ const fs=require('fs'),vm=require('vm');
 const html=fs.readFileSync('index.html','utf8');
 const code=html.split('<script>')[1].split('</script>')[0];
 const ctx={};vm.createContext(ctx);
-vm.runInContext(code+';this.t={convert,checkAnswer,bestAlternative,WEEKS,allPhrases,audioId,weekPhrases,resolveProfile,fillPhrase,nameToKana,isKana,COUNTRIES,JOBS,EXAMPLE}',ctx);
-const {convert,checkAnswer,bestAlternative,WEEKS,allPhrases,audioId,weekPhrases,resolveProfile,fillPhrase,nameToKana,isKana,COUNTRIES,JOBS,EXAMPLE}=ctx.t;
+vm.runInContext(code+';this.t={convert,checkAnswer,bestAlternative,WEEKS,VOICES,allPhrases,hearPhrases,audioId,weekPhrases,reviewCards,deckSize,resolveProfile,fillPhrase,nameToKana,isKana,COUNTRIES,JOBS,EXAMPLE,numberReading,priceItem,PRICES,parseYen,priceHint,strip}',ctx);
+const {convert,checkAnswer,bestAlternative,WEEKS,VOICES,allPhrases,hearPhrases,audioId,weekPhrases,reviewCards,deckSize,resolveProfile,fillPhrase,nameToKana,isKana,COUNTRIES,JOBS,EXAMPLE,numberReading,priceItem,PRICES,parseYen,priceHint,strip}=ctx.t;
 /* Week 1 is built from the learner's profile. Daniel's own must reproduce his original cards. */
 const DANIEL=resolveProfile({name:{e:'Daniel',r:'DANIERU'},country:{id:'de'},job:{id:'teacher'}});
 const PHRASES=weekPhrases(WEEKS[0],DANIEL);
@@ -90,7 +90,7 @@ WEEKS.forEach((w,i)=>{
 const kanjiTotal=WEEKS.reduce((n,w)=>n+w.kanji.length,0);
 need(kanjiTotal<=40,'signage kanji should stay recognition-sized, got '+kanjiTotal);
 const ids=new Map();
-for(const p of allPhrases()){
+for(const p of allPhrases().concat(hearPhrases())){
  need(p.k&&p.r&&p.e,'phrase needs k, r and e: '+JSON.stringify(p));
  need(checkAnswer(p,p.k).status==='ok','model phrase fails its own check: '+p.k);
  need(checkAnswer(p,convert(p.r,true)).status==='ok','typing the romaji does not pass: '+p.k+' <- '+p.r);
@@ -99,7 +99,77 @@ for(const p of allPhrases()){
  need(!ids.has(id)||ids.get(id)===p.k,'two different phrases share the audio id '+id);
  ids.set(id,p.k);
 }
-console.log((errs.length?'FAIL':'ok  ')+' course:',WEEKS.length+' weeks,',allPhrases().length+' phrases,',kanjiTotal+' signs');
+/* Numbers: the readings are generated, so the irregular ones are checked by value. */
+const reading={100:'ひゃく',300:'さんびゃく',380:'さんびゃく はちじゅう',198:'ひゃく きゅうじゅう はち',600:'ろっぴゃく',800:'はっぴゃく',
+ 1000:'せん',3000:'さんぜん',8000:'はっせん',8800:'はっせん はっぴゃく',10000:'いちまん',12000:'いちまん にせん',15000:'いちまん ごせん',
+ 1280:'せん にひゃく はちじゅう',12:'じゅう に',404:'よんひゃく よん'};
+for(const n in reading)eq(numberReading(+n).k,reading[n],'reading of '+n);
+eq(numberReading(380).r,'sanbyaku hachijuu','romaji of 380');
+eq(priceItem(380).k,'さんびゃく はちじゅう えんです','price item');
+eq(priceItem(1280).e,'1,280 yen','price item english');
+eq(PRICES.length,42,'number of prices');
+need(PRICES.every((n,i)=>i===0||n>PRICES[i-1]),'prices are ascending and unique');
+for(const irr of ['さんびゃく','ろっぴゃく','はっぴゃく','さんぜん','はっせん','いちまん'])
+ need(PRICES.filter(n=>numberReading(n).k.split(' ').includes(irr)).length>=2,'irregular '+irr+' appears in at least two prices');
+for(const [s,want] of [['1,280',1280],['¥380',380],['380円',380],['３８０',380],['380 yen',380],[' 100 ',100],['abc',null],['',null],['12.5',null],['1234567',null],['-5',null]])
+ eq(parseYen(s),want,'parseYen '+JSON.stringify(s));
+need(/hundreds/.test(priceHint(380,480)),'hint points at the hundreds');
+need(/irregular/.test(priceHint(300,400)),'hint warns that 300 is irregular');
+need(/irregular/.test(priceHint(8000,7000)),'hint warns that 8,000 is irregular');
+need(!/irregular/.test(priceHint(500,400)),'no irregular warning for 500');
+need(/different size/.test(priceHint(380,38)),'hint notices a different size');
+eq(priceHint(380,380),'','no hint for a right answer');
+for(const c of PRICES)for(const g of [c+10,c-10,c+100,c*10])
+ need(!priceHint(c,g).includes(String(c))&&!priceHint(c,g).includes(c.toLocaleString('en-US')),'a hint contains the answer: '+c+' given '+g);
+
+/* Week 2: review cards, understand-only items, the dialogue, the signs. */
+const w2=WEEKS[1];
+eq(deckSize(w2),16,'week 2 deck size');
+eq(weekPhrases(w2,null).length,16,'week 2 deck without a profile');
+eq(deckSize(WEEKS[0]),11,'week 1 deck size');
+const rv=reviewCards(w2);
+need(rv.length===3&&rv.every(p=>p.review===true),'week 2 opens with 3 review cards');
+need(rv.map(p=>p.k).join('|')==='すみません|ありがとうございます|にほんごは すこしだけです','the review cards are the week 1 cards they name');
+need(weekPhrases(w2,null).slice(3).every(p=>!p.review),'own cards are not marked as review');
+for(const w of WEEKS)for(const [n,i] of w.review||[]){
+ need(n<w.n,'week '+w.n+': a review card must come from an earlier week');
+ need(WEEKS[n-1].phrases[i]&&!WEEKS[n-1].phrases[i].slot,'week '+w.n+': review '+n+'/'+i+' must exist and not be a template');
+}
+const hearK=new Set((w2.hear||[]).map(h=>h.k));
+for(const h of w2.hear){
+ need(h.k&&h.r&&h.e&&h.note,'hear item needs k, r, e and a note: '+h.k);
+ need(VOICES.some(v=>v.id===h.v),'hear item has an unknown voice: '+h.k);
+ if(h.reply){
+  const inRange=i=>Number.isInteger(i)&&i>=0&&i<w2.phrases.length;
+  need(h.reply.ok.length>0&&h.reply.ok.every(inRange)&&h.reply.bad.every(inRange),'reply indices out of range: '+h.k);
+  need(!h.reply.ok.some(i=>h.reply.bad.includes(i)),'a reply is both good and bad: '+h.k);
+ }
+}
+const deckK=new Set(weekPhrases(w2,null).map(p=>p.k));
+w2.scenario.turns.forEach((t,i)=>{
+ const at='week 2 scenario turn '+(i+1);
+ need(t.who==='clerk'||t.who==='you',at+': who');
+ if(t.who==='clerk')need(t.say&&t.say.length&&t.say.every(k=>hearK.has(k)),at+': every clerk line must be a hear item');
+ else{
+  need(t.options.length>=2&&t.options.some(o=>o.ok),at+': needs at least two options and one good one');
+  for(const o of t.options){
+   need(typeof o.ok==='boolean'&&o.why&&(o.k||o.label),at+': option needs ok, why and k or label');
+   if(o.k&&o.ok&&o.k!=='こんにちは')need(deckK.has(o.k),at+': a good option should be a card the learner has met: '+o.k);
+  }
+  if(t.price){
+   const prev=w2.scenario.turns[i-1];
+   need(prev&&prev.say.some(k=>k.includes(numberReading(t.price).k)),at+': the price to type must be the one the clerk says');
+  }
+ }
+});
+need(w2.scenario.turns.at(-1).who==='you','the dialogue ends on the learner’s turn');
+const allSigns=WEEKS.flatMap(w=>w.kanji.map(k=>k.k));
+need(new Set(allSigns).size===allSigns.length,'a sign appears in two weeks: '+allSigns.filter((k,i)=>allSigns.indexOf(k)!==i));
+eq(w2.kanji.length,7,'week 2 signs');
+need(w2.kanji.every(k=>k.hint&&k.hint.length>10),'every week 2 sign has a memory hook');
+need(w2.kanji.every(k=>!/[0-9]{2,}/.test(k.hint)),'a sign hook carries no stray numbers');
+
+console.log((errs.length?'FAIL':'ok  ')+' course:',WEEKS.length+' weeks,',allPhrases().length+' phrases,',hearPhrases().length+' heard items,',kanjiTotal+' signs');
 errs.forEach(e=>console.log('  - '+e));
 if(errs.length)process.exitCode=1;
 console.log(convert('konnichiwa',true),convert('san',false),convert('sann',true),convert('kitte',true),convert('matcha',true),convert('RA-MEN',true));
