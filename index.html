@@ -1118,6 +1118,7 @@ function init(){
     "no-speech": "Did not hear anything. Tap Speak and try again."
   };
   let rec = null;
+  const QUIET_MS = 1500;
 
   function micSay(t){ const m = $("micMsg"); m.hidden = !t; m.textContent = t || ""; }
   function setListening(on){
@@ -1137,11 +1138,11 @@ function init(){
     stopClips();
     const r = new Recognition();
     r.lang = "ja-JP"; r.maxAlternatives = 5; r.interimResults = true; r.continuous = false;
-    let heard = false, failed = false;
-    r.onresult = e => {
-      const res = e.results[e.results.length - 1];
-      const alts = Array.from(res, a => a.transcript);
-      if (!res.isFinal) { micSay("Hearing: " + alts[0]); return; }
+    let heard = false, failed = false, last = null, quiet = null;
+    /* A result is final when the browser says so, or when it ends or goes quiet after
+       interim ones: some browsers (Safari) never flag isFinal, and the text was lost. */
+    const finish = alts => {
+      clearTimeout(quiet);
       heard = true;
       /* Reset now rather than on "end": some browsers are slow or unreliable about it. */
       rec = null; setListening(false);
@@ -1150,12 +1151,24 @@ function init(){
       micSay("Heard: " + text);
       showFeedback(checkAnswer(phrases[idx], text), phrases[idx]);
     };
+    r.onresult = e => {
+      const res = e.results[e.results.length - 1];
+      const alts = Array.from(res, a => a.transcript);
+      if (res.isFinal) { finish(alts); return; }
+      last = alts;
+      micSay("Hearing: " + alts[0]);
+      clearTimeout(quiet);
+      quiet = setTimeout(() => { try { r.stop(); } catch (e) {} }, QUIET_MS);
+    };
     r.onerror = e => {
+      clearTimeout(quiet);
       failed = true;
       if (e.error !== "aborted") micSay(MIC_ERRORS[e.error] || "Speech recognition failed (" + e.error + ").");
     };
     r.onend = () => {
       if (rec !== r) return;
+      if (!heard && !failed && last) { finish(last); return; }
+      clearTimeout(quiet);
       rec = null; setListening(false);
       if (!heard && !failed) micSay("Did not catch anything. Tap Speak and try again.");
     };
