@@ -40,7 +40,10 @@ h2{margin:0 0 8px;font-size:1rem}
 .toggles{display:flex;flex-wrap:wrap;gap:0 20px;align-items:center;color:var(--muted);font-size:.9rem}
 .toggle{display:flex;gap:8px;align-items:center;min-height:44px;cursor:pointer}
 .toggle input{width:20px;height:20px;accent-color:var(--accent)}
-.toggle select{font:inherit;font-size:1rem;min-height:44px;padding:4px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.sec select{width:100%}
+a.btn{display:inline-flex;align-items:center;text-decoration:none;justify-self:start}
+.preview.bad{color:var(--bad)}
+.toggle select,.sec select{font:inherit;font-size:1rem;min-height:44px;padding:4px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 .english{margin:0;font-weight:500}
 .kana{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(1.9rem,8vw,2.6rem);line-height:1.25;text-wrap:balance;min-height:1.25em}
 .romaji{margin:0;color:var(--muted);font-size:.95rem}
@@ -103,6 +106,7 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
       <h1>Japan Phrase Trainer</h1>
     </header>
     <p class="lead">Learn to greet people, shop, eat, get around and ask for help, and to read the signs you will actually see. About 20–30 minutes a day, plus one scenario a week. There are no dates: start when your trip is eight weeks away.</p>
+    <section class="card" id="profileCard" aria-label="Your details"></section>
     <ol id="weeks"></ol>
     <details>
       <summary>How the course works</summary>
@@ -180,6 +184,62 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
     </ul>
   </details>
   </div>
+
+  <div class="view" id="setupView" hidden>
+    <header>
+      <a class="back" href="#">← Back</a>
+      <p>Make it yours</p>
+      <h1>Your details</h1>
+    </header>
+    <form class="card" id="setupForm" novalidate>
+      <p class="note">Week 1 is about introducing yourself, so the exercises use your own name, country and job. These stay on this device and are never sent anywhere.</p>
+
+      <div class="sec">
+        <label class="field" for="nameEn">Your first name</label>
+        <input type="text" id="nameEn" autocomplete="given-name" autocapitalize="words" maxlength="30" placeholder="Daniel">
+      </div>
+      <div class="sec">
+        <label class="field" for="nameJp">How it sounds in Japanese</label>
+        <input type="text" id="nameJp" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="40" placeholder="DANIERU">
+        <p class="preview empty" id="nameKana" lang="ja" data-empty="Your name in katakana appears here"></p>
+        <p class="note">Type it the way a Japanese person would say it, in romaji: DANIERU for Daniel, ANNA, JON, SA-RA (“-” is a long vowel). Check the katakana above.</p>
+      </div>
+
+      <div class="sec">
+        <label class="field" for="country">Where you are from</label>
+        <select id="country"></select>
+      </div>
+      <div class="sec" id="countryOther" hidden>
+        <label class="field" for="countryEn">Country, in English</label>
+        <input type="text" id="countryEn" autocomplete="off" maxlength="40" placeholder="Peru">
+        <label class="field" for="natEn">Your nationality, in English</label>
+        <input type="text" id="natEn" autocomplete="off" maxlength="40" placeholder="Peruvian">
+        <label class="field" for="countryJp">The country in Japanese, in romaji</label>
+        <input type="text" id="countryJp" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="40" placeholder="PERU-">
+        <p class="preview empty" id="countryKana" lang="ja" data-empty="The country in kana appears here"></p>
+        <p class="note">A capital first letter types katakana, lower case types hiragana, and “-” is a long vowel (PERU- is ペルー). Phrases with a country typed in by hand are read by your device’s voice, not a recording.</p>
+      </div>
+
+      <div class="sec">
+        <label class="field" for="job">Your job</label>
+        <select id="job"></select>
+      </div>
+      <div class="sec" id="jobOther" hidden>
+        <label class="field" for="jobEn">Your job, in English</label>
+        <input type="text" id="jobEn" autocomplete="off" maxlength="40" placeholder="a vet">
+        <label class="field" for="jobJp">Your job in Japanese, in romaji</label>
+        <input type="text" id="jobJp" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="40" placeholder="juui">
+        <p class="preview empty" id="jobKana" lang="ja" data-empty="Your job in kana appears here"></p>
+        <p class="note">A capital first letter types katakana, lower case types hiragana, and “-” is a long vowel. Phrases with a job typed in by hand are read by your device’s voice, not a recording.</p>
+      </div>
+
+      <div class="fb miss" id="setupMsg" role="alert" hidden><p id="setupMsgText"></p></div>
+      <div class="row">
+        <button class="btn primary" type="submit">Save and continue</button>
+        <button class="btn" id="useExample" type="button">Use an example instead</button>
+      </div>
+    </form>
+  </div>
 </main>
 
 <script>
@@ -189,11 +249,11 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
    where the reading is unambiguous. Spaces in `s` are the pause points of the slow take. */
 const WEEK1_PHRASES = [
   {k:"はじめまして", r:"hajimemashite", e:"Nice to meet you (first meeting)", alt:["初めまして"]},
-  {k:"わたしは ダニエルです", r:"watashi wa DANIERU desu", e:"I’m Daniel", s:"私は ダニエルです", alt:["私はダニエルです"], soft:["わたしわダニエルです"], tip:"Type the particle は as “ha”: watashi ha DANIERU desu."},
-  {k:"ドイツじんです", r:"DOITSU jin desu", e:"I’m German", s:"ドイツ人です", alt:["ドイツ人です"]},
-  {k:"ドイツからです", r:"DOITSU kara desu", e:"I’m from Germany", alt:[]},
+  {slot:"name", k:"わたしは {name.k}です", r:"watashi wa {name.r} desu", e:"I’m {name.e}", s:"私は {name.k}です", alt:["私は{name.k}です"], soft:["わたしわ{name.k}です"], tip:"Type the particle は as “ha”: watashi ha {name.r} desu."},
+  {slot:"country", k:"{country.k}じんです", r:"{country.r} jin desu", e:"I’m {country.nat}", s:"{country.kj}人です", alt:["{country.kj}人です"]},
+  {slot:"country", k:"{country.k}からです", r:"{country.r} kara desu", e:"I’m from {country.e}", alt:["{country.kj}からです"]},
   {k:"はい、はじめてです", r:"hai, hajimete desu", e:"Yes, it’s my first time", s:"はい、 はじめてです", alt:["はい、初めてです"]},
-  {k:"わたしは きょうしです", r:"watashi wa kyoushi desu", e:"I’m a teacher", s:"私は 教師です", alt:["私は教師です"], soft:["わたしわきょうしです"], tip:"Type the particle は as “ha”: watashi ha kyoushi desu."},
+  {slot:"job", k:"わたしは {job.k}です", r:"watashi wa {job.r} desu", e:"I’m {job.e}", s:"私は {job.kj}です", alt:["私は{job.kj}です"], soft:["わたしわ{job.k}です"], tip:"Type the particle は as “ha”: watashi ha {job.r} desu. {job.note}"},
   {k:"よろしく おねがいします", r:"yoroshiku onegaishimasu", e:"Pleased to meet you / please treat me well", s:"よろしく お願いします", alt:["よろしくお願いします"]},
   {k:"にほんごは すこしだけです", r:"nihongo wa sukoshi dake desu", e:"I only speak a little Japanese", s:"日本語は 少しだけです", alt:["日本語は少しだけです","日本語はすこしだけです"], soft:["にほんごわすこしだけです"], tip:"Type the particle は as “ha”: nihongo ha sukoshi dake desu."},
   {k:"すみません", r:"sumimasen", e:"Excuse me", alt:["済みません"]},
@@ -306,7 +366,137 @@ const WEEKS = [
      {k:"パスポートを なくしました", e:"I lost my passport"}]}
 ];
 
-function allPhrases(){ return WEEKS.flatMap(w => w.phrases || []); }
+/* ---- the learner's own details ----
+   Phrases with a `slot` are templates: {country.k} and friends are filled from the
+   learner's profile. Countries and jobs are finite lists, so every one of them has
+   pre-rendered audio. A name cannot, and neither can a typed-in "Other", so those
+   phrases are `live`: read by the device voice. `k` is kana, `r` the romaji to type
+   (a capital first letter types katakana), `kj` an optional kanji spelling. */
+const COUNTRIES = [
+  {id:"ar", e:"Argentina", nat:"Argentine", k:"アルゼンチン", r:"ARUZENCHIN"},
+  {id:"au", e:"Australia", nat:"Australian", k:"オーストラリア", r:"O-SUTORARIA"},
+  {id:"at", e:"Austria", nat:"Austrian", k:"オーストリア", r:"O-SUTORIA"},
+  {id:"be", e:"Belgium", nat:"Belgian", k:"ベルギー", r:"BERUGI-"},
+  {id:"br", e:"Brazil", nat:"Brazilian", k:"ブラジル", r:"BURAJIRU"},
+  {id:"ca", e:"Canada", nat:"Canadian", k:"カナダ", r:"KANADA"},
+  {id:"cl", e:"Chile", nat:"Chilean", k:"チリ", r:"CHIRI"},
+  {id:"cn", e:"China", nat:"Chinese", k:"ちゅうごく", kj:"中国", r:"chuugoku"},
+  {id:"co", e:"Colombia", nat:"Colombian", k:"コロンビア", r:"KORONBIA"},
+  {id:"cz", e:"Czechia", nat:"Czech", k:"チェコ", r:"CHEKO"},
+  {id:"dk", e:"Denmark", nat:"Danish", k:"デンマーク", r:"DENMA-KU"},
+  {id:"eg", e:"Egypt", nat:"Egyptian", k:"エジプト", r:"EJIPUTO"},
+  {id:"fi", e:"Finland", nat:"Finnish", k:"フィンランド", r:"FINRANDO"},
+  {id:"fr", e:"France", nat:"French", k:"フランス", r:"FURANSU"},
+  {id:"de", e:"Germany", nat:"German", k:"ドイツ", r:"DOITSU"},
+  {id:"gr", e:"Greece", nat:"Greek", k:"ギリシャ", r:"GIRISHA"},
+  {id:"hu", e:"Hungary", nat:"Hungarian", k:"ハンガリー", r:"HANGARI-"},
+  {id:"in", e:"India", nat:"Indian", k:"インド", r:"INDO"},
+  {id:"id", e:"Indonesia", nat:"Indonesian", k:"インドネシア", r:"INDONESHIA"},
+  {id:"ie", e:"Ireland", nat:"Irish", k:"アイルランド", r:"AIRURANDO"},
+  {id:"il", e:"Israel", nat:"Israeli", k:"イスラエル", r:"ISURAERU"},
+  {id:"it", e:"Italy", nat:"Italian", k:"イタリア", r:"ITARIA"},
+  {id:"my", e:"Malaysia", nat:"Malaysian", k:"マレーシア", r:"MARE-SHIA"},
+  {id:"mx", e:"Mexico", nat:"Mexican", k:"メキシコ", r:"MEKISHIKO"},
+  {id:"nl", e:"the Netherlands", nat:"Dutch", k:"オランダ", r:"ORANDA"},
+  {id:"nz", e:"New Zealand", nat:"a New Zealander", k:"ニュージーランド", r:"NYU-JI-RANDO"},
+  {id:"no", e:"Norway", nat:"Norwegian", k:"ノルウェー", r:"NORUWE-"},
+  {id:"ph", e:"the Philippines", nat:"Filipino", k:"フィリピン", r:"FIRIPIN"},
+  {id:"pl", e:"Poland", nat:"Polish", k:"ポーランド", r:"PO-RANDO"},
+  {id:"pt", e:"Portugal", nat:"Portuguese", k:"ポルトガル", r:"PORUTOGARU"},
+  {id:"ru", e:"Russia", nat:"Russian", k:"ロシア", r:"ROSHIA"},
+  {id:"sg", e:"Singapore", nat:"Singaporean", k:"シンガポール", r:"SHINGAPO-RU"},
+  {id:"kr", e:"South Korea", nat:"Korean", k:"かんこく", kj:"韓国", r:"kankoku"},
+  {id:"es", e:"Spain", nat:"Spanish", k:"スペイン", r:"SUPEIN"},
+  {id:"se", e:"Sweden", nat:"Swedish", k:"スウェーデン", r:"SUWE-DEN"},
+  {id:"ch", e:"Switzerland", nat:"Swiss", k:"スイス", r:"SUISU"},
+  {id:"tw", e:"Taiwan", nat:"Taiwanese", k:"たいわん", kj:"台湾", r:"taiwan"},
+  {id:"th", e:"Thailand", nat:"Thai", k:"タイ", r:"TAI"},
+  {id:"tr", e:"Turkey", nat:"Turkish", k:"トルコ", r:"TORUKO"},
+  {id:"ua", e:"Ukraine", nat:"Ukrainian", k:"ウクライナ", r:"UKURAINA"},
+  {id:"gb", e:"the UK", nat:"British", k:"イギリス", r:"IGIRISU"},
+  {id:"us", e:"the USA", nat:"American", k:"アメリカ", r:"AMERIKA"},
+  {id:"vn", e:"Vietnam", nat:"Vietnamese", k:"ベトナム", r:"BETONAMU"}
+];
+
+const JOBS = [
+  {id:"artist", e:"a musician", k:"ミュージシャン", r:"MYU-JISHAN"},
+  {id:"bank", e:"a bank employee", k:"ぎんこういん", kj:"銀行員", r:"ginkouin"},
+  {id:"civil", e:"a civil servant", k:"こうむいん", kj:"公務員", r:"koumuin"},
+  {id:"designer", e:"a designer", k:"デザイナー", r:"DEZAINA-"},
+  {id:"doctor", e:"a doctor", k:"いしゃ", kj:"医者", r:"isha"},
+  {id:"engineer", e:"an engineer", k:"エンジニア", r:"ENJINIA"},
+  {id:"homemaker", e:"a homemaker", k:"しゅふ", kj:"主婦", r:"shufu"},
+  {id:"lawyer", e:"a lawyer", k:"べんごし", kj:"弁護士", r:"bengoshi"},
+  {id:"nurse", e:"a nurse", k:"かんごし", kj:"看護師", r:"kangoshi"},
+  {id:"owner", e:"a business owner", k:"けいえいしゃ", kj:"経営者", r:"keieisha"},
+  {id:"office", e:"a company employee", k:"かいしゃいん", kj:"会社員", r:"kaishain"},
+  {id:"photographer", e:"a photographer", k:"カメラマン", r:"KAMERAMAN"},
+  {id:"programmer", e:"a programmer", k:"プログラマー", r:"PUROGURAMA-"},
+  {id:"researcher", e:"a researcher", k:"けんきゅうしゃ", kj:"研究者", r:"kenkyuusha"},
+  {id:"selfemployed", e:"self-employed", k:"じえいぎょう", kj:"自営業", r:"jieigyou"},
+  {id:"student", e:"a student", k:"がくせい", kj:"学生", r:"gakusei"},
+  {id:"teacher", e:"a teacher", k:"きょうし", kj:"教師", r:"kyoushi", note:"Use きょうし for yourself. せんせい is the respectful word for someone else’s teacher."},
+  {id:"writer", e:"a writer", k:"ライター", r:"RAITA-"}
+];
+
+const find = (list, id) => list.find(x => x.id === id);
+/* Shown to someone who skips setup, so the exercises still work. */
+const EXAMPLE = {name:{e:"Alex", r:"AREKKUSU", k:"アレックス"}, country:find(COUNTRIES, "us"), job:find(JOBS, "office"), example:true};
+
+function fillText(s, vals){
+  return s.replace(/\{(\w+)\.(\w+)\}/g, (m, slot, prop) => {
+    const v = vals[slot];
+    if (!v) return m;
+    return prop === "kj" ? (v.kj || v.k) : (v[prop] == null ? "" : v[prop]);
+  }).trim();
+}
+function fillPhrase(p, vals){
+  const out = {};
+  for (const key in p) {
+    const v = p[key];
+    out[key] = typeof v === "string" ? fillText(v, vals) : Array.isArray(v) ? v.map(x => fillText(x, vals)) : v;
+  }
+  if (p.slot === "name" || (vals[p.slot] && vals[p.slot].custom)) out.live = true;
+  out.personal = true;
+  delete out.slot;
+  return out;
+}
+
+/* A week's cards. Templates need a profile and are left out without one. */
+function weekPhrases(w, vals){
+  return (w.phrases || []).filter(p => !p.slot || vals).map(p => p.slot ? fillPhrase(p, vals) : p);
+}
+function needsProfile(w){ return (w.phrases || []).some(p => p.slot); }
+
+/* Every phrase that can have a recording: every country and job, but no names. */
+function allPhrases(){
+  const out = [];
+  for (const w of WEEKS) for (const p of w.phrases || []) {
+    if (!p.slot) out.push(p);
+    else if (p.slot === "country") COUNTRIES.forEach(c => out.push(fillPhrase(p, {country:c})));
+    else if (p.slot === "job") JOBS.forEach(j => out.push(fillPhrase(p, {job:j})));
+  }
+  return out;
+}
+
+/* Typed romaji to kana. A name is always katakana, whatever case it was typed in. */
+const upperCaps = s => s.trim().replace(/\S+/g, w => /^[A-Z]/.test(w) ? w.toUpperCase() : w);
+function nameToKana(r){ return convert(r.trim().replace(/\S+/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase()), true); }
+function isKana(s){ const t = s.replace(/\s/g, ""); return t.length > 0 && /^[ぁ-ゖァ-ヺー]+$/.test(t); }
+
+/* What is saved: {name:{e,r}, country:{id}|{custom,e,nat,r}, job:{id}|{custom,e,r}}, or
+   {example:true}. Returns the values the templates need, or null if it no longer resolves. */
+function resolveProfile(s){
+  if (!s) return null;
+  if (s.example) return EXAMPLE;
+  try {
+    const nr = s.name.r.trim().replace(/\s+/g, " ").toUpperCase();
+    const pick = (list, v) => v.custom ? {custom:true, e:v.e, nat:v.nat, r:upperCaps(v.r), k:convert(upperCaps(v.r), true)} : find(list, v.id);
+    const country = pick(COUNTRIES, s.country), job = pick(JOBS, s.job);
+    if (!nr || !s.name.e || !country || !job) return null;
+    return {name:{e:s.name.e.trim(), r:nr, k:nameToKana(nr)}, country, job};
+  } catch (e) { return null; }
+}
 
 /* Audio file name for a phrase. Derived from the romaji so the generator and the page
    always agree without a second field to keep in sync. */
@@ -334,7 +524,7 @@ const TABLE = (function(){
     pa:"ぱ",pi:"ぴ",pu:"ぷ",pe:"ぺ",po:"ぽ",
     fa:"ふぁ",fi:"ふぃ",fe:"ふぇ",fo:"ふぉ",
     xa:"ぁ",xi:"ぃ",xu:"ぅ",xe:"ぇ",xo:"ぉ",xtu:"っ",xya:"ゃ",xyu:"ゅ",xyo:"ょ",
-    she:"しぇ",che:"ちぇ",je:"じぇ",
+    she:"しぇ",che:"ちぇ",je:"じぇ",we:"うぇ",wi:"うぃ",
     "-":"ー"
   };
   Object.assign(t, rows);
@@ -438,6 +628,28 @@ function bestAlternative(p, alts){
 function init(){
   const $ = id => document.getElementById(id);
   const KEY_ROMAJI = "jpt-show-romaji";
+  const KEY_PROFILE = "jpt-profile";
+  /* `saved` is what the learner entered; `vals` is it resolved for the templates. Null
+     until they have set up or chosen the example. */
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(KEY_PROFILE) || "null"); } catch (e) {}
+  let vals = resolveProfile(saved);
+  let setupReturn = "#";
+  function saveProfile(s){
+    const changed = JSON.stringify(s) !== JSON.stringify(saved);
+    saved = s; vals = resolveProfile(s);
+    try { localStorage.setItem(KEY_PROFILE, JSON.stringify(s)); } catch (e) {}
+    if (changed) forgetPersonalProgress();
+  }
+  /* Done-state is by card position. New details make the personal cards new, so they must
+     not arrive already ticked off. The fixed cards keep their progress. */
+  function forgetPersonalProgress(){
+    WEEKS.filter(needsProfile).forEach(w => {
+      const d = loadDone(w.n);
+      w.phrases.forEach((p, i) => { if (p.slot) d.delete(i); });
+      try { localStorage.setItem(doneKey(w.n), JSON.stringify([...d])); } catch (e) {}
+    });
+  }
   let week = null, phrases = [], idx = 0, revealed = false;
   let done = new Set();
   /* One done-set per week. Week 1 keeps the key it has always had, so saved progress survives. */
@@ -584,8 +796,10 @@ function init(){
     u.lang = "ja-JP";
     u.rate = slow ? 0.8 : 1;
     if (v) u.voice = v;
-    msg.hidden = !!v;
-    if (!v) msg.textContent = "No Japanese voice on this device. Install one in Settings → Accessibility → Spoken Content → Voices.";
+    /* A card with the learner's own details has no recording, so say why it sounds different. */
+    msg.hidden = !!v && !p.live;
+    msg.textContent = !v ? "No Japanese voice on this device. Install one in Settings → Accessibility → Spoken Content → Voices."
+      : p.live ? "This one includes your own details, so it is read by your device’s voice instead of a recording. It may sound a little different." : "";
     try { synth.speak(u); } catch (e) { msg.hidden = false; msg.textContent = "Speech output is blocked here."; }
   }
 
@@ -593,6 +807,7 @@ function init(){
     const p = phrases[idx];
     try { player.pause(); } catch (e) {}
     if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+    if (p.live) { synthesize(p, slow); return; }
     player.src = "audio/" + $("voice").value + "/" + audioId(p) + (slow ? ".slow" : "") + ".m4a";
     /* A newer click interrupts the older play() with an AbortError. That is not a missing
        file, and falling back on it would speak over the recording that replaced it. */
@@ -699,8 +914,33 @@ function init(){
     return s;
   }
 
+  function setupLink(text, primary){
+    const a = el("a", "btn" + (primary ? " primary" : ""), text);
+    a.href = "#setup";
+    return a;
+  }
+
+  function renderProfileCard(){
+    const box = $("profileCard");
+    box.textContent = "";
+    if (!vals) {
+      box.append(el("h2", null, "Make it yours"),
+        el("p", "note", "Week 1 is about introducing yourself. Add your name, country and job once, and the exercises use your own details."),
+        setupLink("Add your details", true));
+    } else if (vals.example) {
+      box.append(el("h2", null, "Your details"),
+        el("p", "note", "You are using an example person: " + vals.name.e + ", from " + vals.country.e + ", " + vals.job.e + ". Add your own so the exercises are about you."),
+        setupLink("Add your details", true));
+    } else {
+      box.append(el("h2", null, "Your details"),
+        el("p", null, vals.name.e + " · from " + vals.country.e + " · " + vals.job.e),
+        setupLink("Change"));
+    }
+  }
+
   function renderOverview(){
     document.title = "Japan Phrase Trainer";
+    renderProfileCard();
     const ol = $("weeks");
     ol.textContent = "";
     WEEKS.forEach(w => {
@@ -725,6 +965,18 @@ function init(){
     const box = $("weekInfo");
     box.textContent = "";
     box.append(el("p", "english", w.summary));
+    if (needsProfile(w) && vals) {
+      const list = el("div");
+      phrases.filter(p => p.personal).forEach(p => {
+        const row = el("div", "pv"), jp = el("span", "jp", p.k);
+        jp.lang = "ja";
+        row.append(jp, el("span", "en", p.e));
+        list.append(row);
+      });
+      const change = el("a", "back", vals.example ? "These use an example person. Add your own details" : "Change my details");
+      change.href = "#setup";
+      box.append(block("Your introduction", list, change));
+    }
     const goals = el("ul");
     w.goals.forEach(g => goals.append(el("li", null, g)));
     box.append(block("You will be able to", goals));
@@ -755,7 +1007,7 @@ function init(){
   }
 
   function openWeek(w){
-    week = w; phrases = w.phrases || []; done = loadDone(w.n);
+    week = w; phrases = weekPhrases(w, vals); done = loadDone(w.n);
     document.title = "Week " + w.n + ": " + w.title + " · Japan Phrase Trainer";
     $("weekNo").textContent = "Week " + w.n + " of " + WEEKS.length;
     $("weekTitle").textContent = w.title;
@@ -765,15 +1017,93 @@ function init(){
     if (practice) go(0); else $("list").textContent = "";
   }
 
+  /* ---- setup form ---- */
+  const sortKey = e => e.replace(/^the /, "");
+  function fillSelect(sel, list){
+    sel.add(new Option("Choose…", ""));
+    [...list].sort((a, b) => sortKey(a.e).localeCompare(sortKey(b.e)))
+      .forEach(x => sel.add(new Option(x.e.replace(/^an? /, "").replace(/^./, c => c.toUpperCase()), x.id)));
+    sel.add(new Option("Other (type it in)", "other"));
+  }
+  fillSelect($("country"), COUNTRIES);
+  fillSelect($("job"), JOBS);
+
+  /* The kana shown under a field. Red when something cannot become kana yet. */
+  function kanaPreview(input, out, toKana){
+    const v = input.value.trim(), k = v ? toKana(v) : "";
+    out.textContent = k ? (isKana(k) ? k : k + "   ← try another spelling") : out.dataset.empty;
+    out.classList.toggle("empty", !k);
+    out.classList.toggle("bad", !!k && !isKana(k));
+  }
+  const customKana = r => convert(upperCaps(r), true);
+  function previews(){
+    kanaPreview($("nameJp"), $("nameKana"), nameToKana);
+    kanaPreview($("countryJp"), $("countryKana"), customKana);
+    kanaPreview($("jobJp"), $("jobKana"), customKana);
+  }
+  function syncOther(){
+    $("countryOther").hidden = $("country").value !== "other";
+    $("jobOther").hidden = $("job").value !== "other";
+  }
+  ["nameJp", "countryJp", "jobJp"].forEach(id => $(id).addEventListener("input", previews));
+  ["country", "job"].forEach(id => $(id).addEventListener("change", syncOther));
+
+  function openSetup(){
+    document.title = "Your details · Japan Phrase Trainer";
+    const s = saved && !saved.example ? saved : null;
+    $("nameEn").value = s ? s.name.e : "";
+    $("nameJp").value = s ? s.name.r : "";
+    const fillPick = (sel, v, fields) => {
+      sel.value = !v ? "" : v.custom ? "other" : v.id;
+      fields.forEach(([id, prop]) => { $(id).value = v && v.custom ? v[prop] : ""; });
+    };
+    fillPick($("country"), s && s.country, [["countryEn", "e"], ["natEn", "nat"], ["countryJp", "r"]]);
+    fillPick($("job"), s && s.job, [["jobEn", "e"], ["jobJp", "r"]]);
+    $("setupMsg").hidden = true;
+    syncOther(); previews();
+  }
+
+  $("setupForm").addEventListener("submit", ev => {
+    ev.preventDefault();
+    const fail = msg => { $("setupMsgText").textContent = msg; $("setupMsg").hidden = false; };
+    const val = id => $(id).value.trim();
+    if (!val("nameEn")) return fail("Enter your first name.");
+    if (!isKana(nameToKana(val("nameJp") || "x"))) return fail("Your name in Japanese has to turn into katakana. Type how it sounds, for example DANIERU for Daniel.");
+    let country, job;
+    if ($("country").value === "other") {
+      if (!val("countryEn") || !val("natEn")) return fail("Enter the country and your nationality in English.");
+      if (!isKana(customKana(val("countryJp") || "x"))) return fail("Type the country in Japanese sounds, for example PERU- for Peru. It has to turn into kana.");
+      country = {custom:true, e:val("countryEn"), nat:val("natEn"), r:val("countryJp")};
+    } else if ($("country").value) {
+      country = {id:$("country").value};
+    } else return fail("Choose where you are from.");
+    if ($("job").value === "other") {
+      if (!val("jobEn")) return fail("Enter your job in English.");
+      if (!isKana(customKana(val("jobJp") || "x"))) return fail("Type your job in Japanese sounds, for example juui for a vet. It has to turn into kana.");
+      job = {custom:true, e:val("jobEn"), r:val("jobJp")};
+    } else if ($("job").value) {
+      job = {id:$("job").value};
+    } else return fail("Choose your job.");
+    saveProfile({name:{e:val("nameEn"), r:val("nameJp")}, country, job});
+    location.hash = setupReturn;
+  });
+  $("useExample").addEventListener("click", () => { saveProfile({example:true}); location.hash = setupReturn; });
+
   function route(){
-    const m = /^#week-(\d+)$/.exec(location.hash);
+    const h = location.hash;
+    const m = /^#week-(\d+)$/.exec(h);
     const w = m && WEEKS.find(x => x.n === +m[1]);
+    /* A week built from the learner's details needs them first. Replace, so Back does not loop. */
+    if (w && needsProfile(w) && !vals) { setupReturn = h; location.replace("#setup"); return; }
+    const setup = h === "#setup";
+    if (!setup) setupReturn = "#";
     stopMic();
     try { player.pause(); } catch (e) {}
     if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
-    $("overview").hidden = !!w;
+    $("overview").hidden = !!w || setup;
     $("weekView").hidden = !w;
-    if (w) openWeek(w); else renderOverview();
+    $("setupView").hidden = !setup;
+    if (w) openWeek(w); else if (setup) openSetup(); else renderOverview();
     window.scrollTo(0, 0);
   }
 

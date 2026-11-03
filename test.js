@@ -2,9 +2,11 @@ const fs=require('fs'),vm=require('vm');
 const html=fs.readFileSync('index.html','utf8');
 const code=html.split('<script>')[1].split('</script>')[0];
 const ctx={};vm.createContext(ctx);
-vm.runInContext(code+';this.t={convert,checkAnswer,bestAlternative,WEEKS,allPhrases,audioId}',ctx);
-const {convert,checkAnswer,bestAlternative,WEEKS,allPhrases,audioId}=ctx.t;
-const PHRASES=WEEKS[0].phrases;
+vm.runInContext(code+';this.t={convert,checkAnswer,bestAlternative,WEEKS,allPhrases,audioId,weekPhrases,resolveProfile,fillPhrase,nameToKana,isKana,COUNTRIES,JOBS,EXAMPLE}',ctx);
+const {convert,checkAnswer,bestAlternative,WEEKS,allPhrases,audioId,weekPhrases,resolveProfile,fillPhrase,nameToKana,isKana,COUNTRIES,JOBS,EXAMPLE}=ctx.t;
+/* Week 1 is built from the learner's profile. Daniel's own must reproduce his original cards. */
+const DANIEL=resolveProfile({name:{e:'Daniel',r:'DANIERU'},country:{id:'de'},job:{id:'teacher'}});
+const PHRASES=weekPhrases(WEEKS[0],DANIEL);
 const cases=[
  ['hajimemashite',0],['watashi ha DANIERU desu',1],['watashi wa DANIERU desu',1],['DOITSU jin desu',2],['doitsujin desu',2],['doitsu jin desu',2],
  ['DOITSU kara desu',3],['hai, hajimete desu',4],['watashi ha kyoushi desu',5],['yoroshiku onegaishimasu',6],
@@ -25,9 +27,55 @@ const speech=[
 let bad=0;
 for(const [i,alts,want,status] of speech){const got=bestAlternative(PHRASES[i],alts);const s=checkAnswer(PHRASES[i],got).status;const pass=got===want&&s===status;if(!pass)bad++;console.log((pass?'ok  ':'FAIL')+' speech',JSON.stringify(alts).padEnd(44),'->',JSON.stringify(got),s);}
 if(bad){console.log(bad+' speech case(s) failed');process.exitCode=1;}
-/* Course data: the shape the page relies on, and that every phrase can actually be answered. */
 const errs=[];
 const need=(ok,msg)=>{if(!ok)errs.push(msg);};
+
+/* The learner's details: templates, profiles, name-to-kana. */
+const eq=(got,want,what)=>need(got===want,what+': got '+JSON.stringify(got)+', want '+JSON.stringify(want));
+eq(PHRASES.length,11,'week 1 phrase count for a full profile');
+eq(PHRASES[1].k,'わたしは ダニエルです','name card');
+eq(PHRASES[1].r,'watashi wa DANIERU desu','name card romaji');
+eq(PHRASES[1].s,'私は ダニエルです','name card speech spelling');
+eq(PHRASES[1].tip,'Type the particle は as “ha”: watashi ha DANIERU desu.','name card tip');
+eq(PHRASES[2].k,'ドイツじんです','nationality card');
+eq(PHRASES[2].e,'I’m German','nationality card english');
+eq(PHRASES[3].k,'ドイツからです','from card');
+eq(PHRASES[3].e,'I’m from Germany','from card english');
+eq(PHRASES[5].k,'わたしは きょうしです','job card');
+eq(PHRASES[5].s,'私は 教師です','job card speech spelling');
+need(/せんせい/.test(PHRASES[5].tip),'teacher keeps its note about せんせい');
+need(PHRASES[1].live===true&&!PHRASES[2].live,'only the name card is read live');
+need(PHRASES.every(p=>!('slot' in p)),'a filled card keeps no slot');
+eq(weekPhrases(WEEKS[0],null).length,7,'week 1 without a profile keeps only the fixed cards');
+eq(resolveProfile(null),null,'no profile');
+eq(resolveProfile({example:true}),EXAMPLE,'example profile');
+eq(resolveProfile({name:{e:'X',r:'A'},country:{id:'zz'},job:{id:'teacher'}}),null,'unknown country id');
+eq(resolveProfile({name:{e:'',r:'A'},country:{id:'de'},job:{id:'teacher'}}),null,'empty name');
+eq(resolveProfile({name:{e:'X',r:'A'}}),null,'missing country');
+const custom=resolveProfile({name:{e:'Ana',r:'Ana'},country:{custom:true,e:'Peru',nat:'Peruvian',r:'PERU-'},job:{custom:true,e:'a vet',r:'juui'}});
+eq(custom&&custom.name.k,'アナ','name typed in mixed case');
+eq(custom&&custom.country.k,'ペルー','custom country kana comes from the converter');
+eq(custom&&custom.job.k,'じゅうい','custom job is hiragana when typed in lower case');
+const cc=custom&&fillPhrase(WEEKS[0].phrases[2],{country:custom.country});
+need(cc&&cc.live===true&&cc.e==='I’m Peruvian','a typed-in country is read live and uses the nationality');
+eq(nameToKana('DANIERU'),'ダニエル','nameToKana');
+eq(nameToKana('Anna'),'アンナ','nameToKana mixed case');
+eq(nameToKana('jon'),'ジョン','nameToKana lower case still gives katakana');
+eq(nameToKana('SA-RA'),'サーラ','nameToKana long vowel');
+need(!isKana(nameToKana('Daniel')),'"Daniel" leaves a latin letter, which the form must reject');
+need(isKana('ダニエル')&&isKana('ちゅうごく')&&isKana('ミュージ シャン'),'isKana accepts kana');
+need(!isKana('')&&!isKana('ダニエl')&&!isKana('日本'),'isKana rejects empty, latin and kanji');
+/* Every country and job must be typable: the romaji has to convert to exactly its kana. */
+const seen=new Set();
+for(const [kind,list] of [['country',COUNTRIES],['job',JOBS]])for(const x of list){
+ const key=kind+':'+x.id;
+ need(!seen.has(key),'duplicate id '+key);seen.add(key);
+ need(x.id&&x.k&&x.r&&x.e,key+' needs id, k, r and e');
+ if(kind==='country')need(x.nat,key+' needs a nationality');
+ eq(convert(x.r,true),x.k,key+' romaji '+x.r+' does not type its kana');
+}
+
+/* Course data: the shape the page relies on, and that every phrase can actually be answered. */
 need(WEEKS.length===8,'expected 8 weeks, got '+WEEKS.length);
 WEEKS.forEach((w,i)=>{
  const at='week '+(i+1);
