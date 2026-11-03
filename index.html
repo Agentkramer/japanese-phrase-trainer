@@ -40,6 +40,7 @@ h2{margin:0 0 8px;font-size:1rem}
 .toggles{display:flex;flex-wrap:wrap;gap:0 20px;align-items:center;color:var(--muted);font-size:.9rem}
 .toggle{display:flex;gap:8px;align-items:center;min-height:44px;cursor:pointer}
 .toggle input{width:20px;height:20px;accent-color:var(--accent)}
+.toggle select{font:inherit;font-size:1rem;min-height:44px;padding:4px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 .english{margin:0;font-weight:500}
 .kana{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(1.9rem,8vw,2.6rem);line-height:1.25;text-wrap:balance;min-height:1.25em}
 .romaji{margin:0;color:var(--muted);font-size:.95rem}
@@ -88,6 +89,7 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
     <div class="toggles">
       <label class="toggle"><input type="checkbox" id="hide"> Hide kana, recall from English</label>
       <label class="toggle"><input type="checkbox" id="romajiToggle"> Show romaji</label>
+      <label class="toggle">Voice <select id="voice"></select></label>
     </div>
     <p class="english" id="english"></p>
     <p class="kana" id="kana" lang="ja"></p>
@@ -150,6 +152,15 @@ const PHRASES = [
   {k:"すみません", r:"sumimasen", e:"Excuse me", alt:["済みません"]},
   {k:"ごめんなさい", r:"gomennasai", e:"I’m sorry", alt:[]},
   {k:"ありがとうございます", r:"arigatou gozaimasu", e:"Thank you", alt:["有難うございます"]}
+];
+
+/* Voices of the pre-rendered audio. `id` is the folder under audio/ and `name` is what
+   the picker shows. `say` is for make-audio.js only: macOS voice identifiers, best first.
+   O-Ren is a Siri voice, which is why her identifiers differ from the other two. */
+const VOICES = [
+  {id:"kyoko", name:"Kyoko", say:["com.apple.voice.enhanced.ja-JP.Kyoko","com.apple.voice.compact.ja-JP.Kyoko"]},
+  {id:"otoya", name:"Otoya", say:["com.apple.voice.enhanced.ja-JP.Otoya","com.apple.voice.compact.ja-JP.Otoya"]},
+  {id:"oren", name:"O-Ren", say:["com.apple.ttsbundle.siri_O-ren_ja-JP_premium","com.apple.ttsbundle.siri_O-ren_ja-JP_compact"]}
 ];
 
 /* Audio file name for a phrase. Derived from the romaji so the generator and the page
@@ -279,7 +290,14 @@ function init(){
   let done = new Set();
   try { done = new Set(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch (e) {}
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...done])); } catch (e) {} };
+  const KEY_VOICE = "jpt-voice";
   try { $("romajiToggle").checked = localStorage.getItem(KEY_ROMAJI) === "1"; } catch (e) {}
+
+  VOICES.forEach(v => $("voice").add(new Option(v.name, v.id)));
+  try {
+    const saved = localStorage.getItem(KEY_VOICE);
+    if (VOICES.some(v => v.id === saved)) $("voice").value = saved;
+  } catch (e) {}
 
   function kanaVisible(){ return !$("hide").checked || revealed; }
   function romajiVisible(){ return $("romajiToggle").checked && kanaVisible(); }
@@ -420,8 +438,11 @@ function init(){
     const p = PHRASES[idx];
     try { player.pause(); } catch (e) {}
     if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
-    player.src = "audio/" + audioId(p) + (slow ? ".slow" : "") + ".m4a";
-    player.play().then(() => { $("voiceMsg").hidden = true; }).catch(() => synthesize(p, slow));
+    player.src = "audio/" + $("voice").value + "/" + audioId(p) + (slow ? ".slow" : "") + ".m4a";
+    /* A newer click interrupts the older play() with an AbortError. That is not a missing
+       file, and falling back on it would speak over the recording that replaced it. */
+    player.play().then(() => { $("voiceMsg").hidden = true; })
+      .catch(err => { if (!err || err.name !== "AbortError") synthesize(p, slow); });
   }
 
   $("answer").addEventListener("input", () => { updatePreview(); $("feedback").textContent = ""; });
@@ -435,6 +456,9 @@ function init(){
   $("slow").addEventListener("click", () => speak(true));
   $("reveal").addEventListener("click", () => { revealed = true; renderCard(); });
   $("hide").addEventListener("change", () => { revealed = false; renderCard(); });
+  $("voice").addEventListener("change", () => {
+    try { localStorage.setItem(KEY_VOICE, $("voice").value); } catch (e) {}
+  });
   $("romajiToggle").addEventListener("change", () => {
     try { localStorage.setItem(KEY_ROMAJI, $("romajiToggle").checked ? "1" : "0"); } catch (e) {}
     renderCard();

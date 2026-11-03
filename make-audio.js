@@ -1,16 +1,18 @@
-/* Pre-renders one audio file per phrase into audio/, so the page does not depend on
-   whatever voice happens to be installed on the device. Run: node make-audio.js
+/* Pre-renders one audio file per phrase and voice into audio/<voice>/, so the page does
+   not depend on whatever voice happens to be installed on the device.
+     node make-audio.js                 every voice in VOICES
+     node make-audio.js --voice otoya   just one (the `id` from VOICES)
 
-   The best Japanese voice that is actually installed is picked automatically, so after
-   installing a better one in System Settings -> Accessibility -> Spoken Content ->
-   System Voice -> Manage Voices -> Japanese, a plain re-run upgrades every file.
-   --voice <identifier> overrides the choice. */
+   Per voice, the first identifier in its `say` list that actually renders is used, so
+   installing a better voice in System Settings -> Accessibility -> Read & Speak ->
+   System Voice -> Manage Voices -> Japanese and re-running upgrades the files. A voice
+   with none installed is skipped with a warning and its old files are left alone. */
 const fs = require('fs'), os = require('os'), path = require('path'), vm = require('vm');
 const { execFileSync } = require('child_process');
 
 const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf(n); return i < 0 ? d : args[i + 1]; };
-const VOICE_ARG = opt('--voice', null);
+const ONLY = opt('--voice', null);
 const RATE = +opt('--rate', 170);
 const SLOW_RATE = +opt('--slow-rate', 135);
 const PAUSE = +opt('--pause', 400);
@@ -19,8 +21,14 @@ const OUT = path.join(__dirname, opt('--out', 'audio'));
 const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const code = html.split('<script>')[1].split('</script>')[0];
 const ctx = {}; vm.createContext(ctx);
-vm.runInContext(code + ';this.t={PHRASES,audioId,speechChunks}', ctx);
-const { PHRASES, audioId, speechChunks } = ctx.t;
+vm.runInContext(code + ';this.t={PHRASES,VOICES,audioId,speechChunks}', ctx);
+const { PHRASES, VOICES, audioId, speechChunks } = ctx.t;
+
+const voices = ONLY ? VOICES.filter(v => v.id === ONLY) : VOICES;
+if (!voices.length) {
+  console.error(`No voice "${ONLY}". Known: ${VOICES.map(v => v.id).join(', ')}`);
+  process.exit(1);
+}
 
 const tmp = path.join(os.tmpdir(), 'jpt-say.aiff');
 const duration = f => {
@@ -29,75 +37,64 @@ const duration = f => {
   return m ? +m[1] : 0;
 };
 
-/* Best first. say(1) lists voices that are registered but not downloaded, and those
-   render ~0.01s of silence instead of failing, so each candidate is measured. */
-const CANDIDATES = [
-  'com.apple.voice.premium.ja-JP.Kyoko',
-  'com.apple.voice.premium.ja-JP.Otoya',
-  'com.apple.ttsbundle.siri_Hattori_ja-JP_premium',
-  'com.apple.ttsbundle.siri_O-ren_ja-JP_premium',
-  'com.apple.voice.enhanced.ja-JP.Kyoko',
-  'com.apple.voice.enhanced.ja-JP.Otoya',
-  'com.apple.voice.compact.ja-JP.Kyoko'
-];
-
+/* say(1) accepts the identifier of a voice that is registered but not downloaded and
+   renders ~0.01s of silence instead of failing, so every candidate is measured. */
 function speaks(voice) {
   try {
     execFileSync('say', ['-v', voice, '-o', tmp, 'テスト'], { stdio: 'ignore' });
-    const ok = duration(tmp) >= 0.3;
-    fs.unlinkSync(tmp);
-    return ok;
+    return duration(tmp) >= 0.3;
   } catch (e) {
-    try { fs.unlinkSync(tmp); } catch (_) {}
     return false;
+  } finally {
+    try { fs.unlinkSync(tmp); } catch (_) {}
   }
 }
 
-const VOICE = VOICE_ARG || CANDIDATES.find(speaks);
-if (!VOICE) {
-  console.error('No usable Japanese voice. Install one in System Settings -> Accessibility\n' +
-    '-> Spoken Content -> System Voice -> Manage Voices -> Japanese.');
-  process.exit(1);
-}
-
-function render(text, rate, file) {
-  execFileSync('say', ['-v', VOICE, '-r', String(rate), '-o', tmp, text]);
+function render(voice, text, rate, file) {
+  execFileSync('say', ['-v', voice, '-r', String(rate), '-o', tmp, text]);
   const d = duration(tmp);
   if (d < 0.3) {
     fs.unlinkSync(tmp);
-    throw new Error(`voice "${VOICE}" rendered ${d.toFixed(2)}s of silence. It is listed ` +
-      `but not installed - download it in System Settings -> Accessibility -> Spoken Content.`);
+    throw new Error(`voice "${voice}" rendered ${d.toFixed(2)}s of silence for "${text}".`);
   }
   execFileSync('afconvert', ['-f', 'm4af', '-d', 'aac', '-b', '32000', '--mix', '-c', '1', tmp, file]);
   fs.unlinkSync(tmp);
   return d;
 }
 
-fs.mkdirSync(OUT, { recursive: true });
-let bytes = 0;
-try {
-  for (const p of PHRASES) {
-    const id = audioId(p), chunks = speechChunks(p);
-    const takes = [
-      [chunks.join(''), RATE, `${id}.m4a`],
-      [chunks.join(` [[slnc ${PAUSE}]] `), SLOW_RATE, `${id}.slow.m4a`]
-    ];
-    const out = [];
-    for (const [text, rate, name] of takes) {
-      const file = path.join(OUT, name);
-      const d = render(text, rate, file);
-      bytes += fs.statSync(file).size;
-      out.push(`${name} ${d.toFixed(1)}s`);
-    }
-    console.log(p.k.padEnd(16), out.join('  '));
+let failed = false;
+for (const v of voices) {
+  const say = v.say.find(speaks);
+  if (!say) {
+    console.warn(`\n${v.name}: none of ${v.say.join(', ')} is installed, skipped.`);
+    failed = true;
+    continue;
   }
-} catch (e) {
-  console.error('\n' + e.message);
-  process.exit(1);
+  console.log(`\n${v.name} (${say})`);
+  const dir = path.join(OUT, v.id);
+  fs.mkdirSync(dir, { recursive: true });
+  let bytes = 0;
+  try {
+    for (const p of PHRASES) {
+      const id = audioId(p), chunks = speechChunks(p);
+      const takes = [
+        [chunks.join(''), RATE, `${id}.m4a`],
+        [chunks.join(` [[slnc ${PAUSE}]] `), SLOW_RATE, `${id}.slow.m4a`]
+      ];
+      const out = [];
+      for (const [text, rate, name] of takes) {
+        const file = path.join(dir, name);
+        const d = render(say, text, rate, file);
+        bytes += fs.statSync(file).size;
+        out.push(`${d.toFixed(1)}s`);
+      }
+      console.log('  ' + p.k.padEnd(16), out.join('  '));
+    }
+  } catch (e) {
+    console.error('\n' + e.message);
+    failed = true;
+    continue;
+  }
+  console.log(`  ${PHRASES.length * 2} files, ${(bytes / 1024).toFixed(0)} KB`);
 }
-console.log(`\n${PHRASES.length * 2} files, ${(bytes / 1024).toFixed(0)} KB, voice ${VOICE}`);
-if (/compact/.test(VOICE)) {
-  console.log('\nThis is the basic voice that ships with macOS. For a much better one, install\n' +
-    'Kyoko (Premium) in System Settings -> Accessibility -> Spoken Content -> System\n' +
-    'Voice -> Manage Voices -> Japanese, then run this again. No flag needed.');
-}
+if (failed) process.exitCode = 1;
