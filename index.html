@@ -70,6 +70,25 @@ ol{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .item .jp{font-weight:500}
 .item .en{grid-column:1;color:var(--muted);font-size:.85rem}
 .item .chip{grid-row:1 / span 2;grid-column:2;align-self:center;font-size:.75rem;font-weight:700;color:var(--good);background:var(--good-bg);padding:2px 8px;border-radius:999px}
+.view{display:grid;gap:20px}
+[hidden]{display:none!important}
+.lead{margin:0}
+.back{display:inline-flex;align-items:center;min-height:44px;color:var(--accent);font-weight:500;text-decoration:none}
+.back:hover{text-decoration:underline}
+.back:focus-visible,a.item:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+a.item{text-decoration:none}
+.item .jp b{color:var(--muted);font-weight:500;margin-right:.5em}
+.item .chip.muted{color:var(--muted);background:var(--bg)}
+.card h2{margin:0}
+.card ul{margin:0;padding-left:20px;display:grid;gap:4px}
+.card .sec{display:grid;gap:8px}
+.kanji-row{display:flex;flex-wrap:wrap;gap:8px}
+.kj{display:inline-flex;flex-direction:column;align-items:center;min-width:64px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.kj b{font-family:var(--display);font-size:1.4rem;line-height:1.3}
+.kj span{font-size:.75rem;color:var(--muted)}
+.pv{display:grid;gap:0;padding:8px 0;border-top:1px solid var(--line)}
+.pv .jp{font-family:var(--display);font-weight:700;font-size:1.15rem}
+.pv .en{color:var(--muted);font-size:.85rem}
 details{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 16px}
 summary{cursor:pointer;font-weight:500}
 details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
@@ -78,12 +97,36 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
 </head>
 <body>
 <main>
+  <div class="view" id="overview">
+    <header>
+      <p>An 8-week course for your first trip</p>
+      <h1>Japan Phrase Trainer</h1>
+    </header>
+    <p class="lead">Learn to greet people, shop, eat, get around and ask for help, and to read the signs you will actually see. About 20–30 minutes a day, plus one scenario a week. There are no dates: start when your trip is eight weeks away.</p>
+    <ol id="weeks"></ol>
+    <details>
+      <summary>How the course works</summary>
+      <ul>
+        <li><b>Set phrases first.</b> Grammar only where it helps on the road. The aim is to say what you need and to recognise what you hear.</li>
+        <li><b>Kana comes first.</b> You should be able to read hiragana and katakana, slowly is fine. If not, spend a few days on them before week 1, then keep them fresh with a short drill now and then.</li>
+        <li><b>Signs are recognition only.</b> About 30 kanji you will see in stations, shops and temples. You do not need to write them.</li>
+        <li><b>One scenario a week.</b> Each week ends with a situation to act out: a convenience store, a restaurant, a station, a hotel. Say it out loud.</li>
+        <li><b>Safety net.</b> Before you leave, download the offline Japanese pack in Google Translate and try Google Lens on signs and menus.</li>
+        <li><b>Typing and dictation.</b> Type romaji and press Return to keep hiragana, rather than picking kanji suggestions. Dictation works best as a short pronunciation check, not as the main way to converse.</li>
+      </ul>
+    </details>
+  </div>
+
+  <div class="view" id="weekView" hidden>
   <header>
-    <p>Week 1</p>
-    <h1>Meeting people</h1>
+    <a class="back" href="#">← All weeks</a>
+    <p id="weekNo"></p>
+    <h1 id="weekTitle"></h1>
   </header>
 
-  <section class="card" aria-label="Current phrase">
+  <section class="card" id="weekInfo" aria-label="About this week"></section>
+
+  <section class="card" id="practice" aria-label="Current phrase">
     <div class="top">
       <span id="counter"></span>
     </div>
@@ -119,12 +162,12 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
     </div>
   </section>
 
-  <section aria-label="All phrases">
+  <section id="listSection" aria-label="All phrases">
     <h2>All phrases</h2>
     <ol id="list"></ol>
   </section>
 
-  <details>
+  <details id="helpTyping">
     <summary>How to type and dictate</summary>
     <ul>
       <li>Type romaji and kana appears. Add a space between words.</li>
@@ -136,6 +179,7 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
       <li>If a phrase has no recording yet, the device’s own Japanese voice reads it. If that is silent, install a voice in iPad Settings → Accessibility → Spoken Content → Voices.</li>
     </ul>
   </details>
+  </div>
 </main>
 
 <script>
@@ -143,7 +187,7 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
 /* `s` is the spelling handed to the speech engine. Kana alone gives correct sounds but
    poor word segmentation, and a particle は can come out as "ha". Kanji is used only
    where the reading is unambiguous. Spaces in `s` are the pause points of the slow take. */
-const PHRASES = [
+const WEEK1_PHRASES = [
   {k:"はじめまして", r:"hajimemashite", e:"Nice to meet you (first meeting)", alt:["初めまして"]},
   {k:"わたしは ダニエルです", r:"watashi wa DANIERU desu", e:"I’m Daniel", s:"私は ダニエルです", alt:["私はダニエルです"], soft:["わたしわダニエルです"], tip:"Type the particle は as “ha”: watashi ha DANIERU desu."},
   {k:"ドイツじんです", r:"DOITSU jin desu", e:"I’m German", s:"ドイツ人です", alt:["ドイツ人です"]},
@@ -165,6 +209,104 @@ const VOICES = [
   {id:"otoya", name:"Otoya", say:["com.apple.voice.enhanced.ja-JP.Otoya","com.apple.voice.compact.ja-JP.Otoya"]},
   {id:"oren", name:"O-Ren", say:["com.apple.ttsbundle.siri_O-ren_ja-JP_premium","com.apple.ttsbundle.siri_O-ren_ja-JP_compact"]}
 ];
+
+/* The course: eight weeks, no dates, so it fits any departure. A week with `phrases` has
+   practice cards. One without shows `preview` (a first look at its key phrases) until its
+   cards are written. `kanji` is for recognition only, about 30 signs in all. */
+const WEEKS = [
+  {n:1, title:"Meeting people",
+   summary:"Greet people, introduce yourself, and say sorry, thank you and excuse me. The phrases you will use in your first five minutes in Japan.",
+   goals:["Greet someone and introduce yourself with ～です","Say that you only speak a little Japanese","Apologise, thank people and get their attention politely"],
+   kanji:[],
+   scenario:{title:"Meeting someone", text:"Introduce yourself to a new person: your name, where you are from, and that it is your first time in Japan."},
+   phrases:WEEK1_PHRASES},
+  {n:2, title:"Numbers, money and first signs",
+   summary:"Count, understand prices in yen, pay at a convenience store, and read the first signs you will meet in every station.",
+   goals:["Say and understand numbers up to 100","Understand a price such as 380 yen when you hear it","Pay at a konbini: bag, heating, card","Recognise the exit, entrance, station and men’s and women’s signs"],
+   kanji:[{k:"出口",e:"exit"},{k:"入口",e:"entrance"},{k:"駅",e:"station"},{k:"男",e:"men"},{k:"女",e:"women"}],
+   scenario:{title:"Convenience store checkout", text:"Buy a drink and a snack, say whether you need a bag, and pay."},
+   preview:[
+     {k:"いくらですか", e:"How much is it?"},
+     {k:"さんびゃく はちじゅう えんです", e:"It is 380 yen"},
+     {k:"カードは つかえますか", e:"Can I use a card?"},
+     {k:"ふくろは いりません", e:"I don’t need a bag"},
+     {k:"あたためますか", e:"Shall I heat it up? (what the clerk asks)"}]},
+  {n:3, title:"Shopping",
+   summary:"Point at things, ask what they cost and ask for what you want. これ, それ, あれ and ～をください cover most of a shopping trip.",
+   goals:["Point things out with これ, それ and あれ","Ask for something with ～をください","Ask the price and ask for another size","Ask for tax-free shopping"],
+   kanji:[{k:"円",e:"yen"},{k:"店",e:"shop"},{k:"大",e:"large"},{k:"小",e:"small"},{k:"無料",e:"free of charge"},{k:"割引",e:"discount"}],
+   scenario:{title:"Shopping", text:"Look around a shop, ask for a size you cannot see, try something on and pay, tax-free if you qualify."},
+   preview:[
+     {k:"これを ください", e:"This one, please"},
+     {k:"これは いくらですか", e:"How much is this?"},
+     {k:"みているだけです", e:"I’m just looking"},
+     {k:"ちいさい サイズは ありますか", e:"Do you have a smaller size?"},
+     {k:"しちゃくしても いいですか", e:"May I try this on?"},
+     {k:"めんぜいは できますか", e:"Can I get this tax-free?"}]},
+  {n:4, title:"Food and restaurants",
+   summary:"Get a table, read a menu for the basics, order and ask for the bill. Plus the ticket machines that many casual restaurants use.",
+   goals:["Tell the staff how many people you are","Order with ～をください and ～をおねがいします","Say what you cannot or do not eat","Ask for the bill and thank them for the meal"],
+   kanji:[{k:"食",e:"eat, food"},{k:"飲",e:"drink"},{k:"水",e:"water"},{k:"肉",e:"meat"},{k:"魚",e:"fish"},{k:"茶",e:"tea"},{k:"食券",e:"meal ticket (from a machine)"}],
+   scenario:{title:"Restaurant", text:"Get a table for two, order, ask about an ingredient and pay."},
+   preview:[
+     {k:"ふたりです", e:"Two people"},
+     {k:"メニューを おねがいします", e:"The menu, please"},
+     {k:"おすすめは なんですか", e:"What do you recommend?"},
+     {k:"ベジタリアンです", e:"I’m vegetarian"},
+     {k:"おかいけいを おねがいします", e:"The bill, please"},
+     {k:"ごちそうさまでした", e:"Thank you for the meal (said when you leave)"}]},
+  {n:5, title:"Getting around",
+   summary:"Find stations, platforms and toilets, ask where things are, buy tickets or use an IC card, and find out whether a place is open.",
+   goals:["Ask where something is with ～はどこですか","Say where you want to go: ～にいきたいです","Understand platform and line numbers","Ask whether a place is open: やっていますか"],
+   kanji:[{k:"線",e:"line"},{k:"番",e:"number"},{k:"口",e:"exit, opening"},{k:"乗り換え",e:"transfer"},{k:"北",e:"north"},{k:"南",e:"south"},{k:"東",e:"east"},{k:"西",e:"west"}],
+   scenario:{title:"Station and directions", text:"Top up an IC card or buy a ticket, find the right platform and ask a passer-by for directions."},
+   tip:"Around the New Year holidays many shops, restaurants and attractions close, and some transport runs reduced timetables. Check before you go, and keep やっていますか handy.",
+   preview:[
+     {k:"えきは どこですか", e:"Where is the station?"},
+     {k:"トイレは どこですか", e:"Where is the toilet?"},
+     {k:"～に いきたいです", e:"I want to go to ～"},
+     {k:"なんばんせんですか", e:"Which platform is it?"},
+     {k:"のりかえは どこですか", e:"Where do I change trains?"},
+     {k:"いま やっていますか", e:"Is it open now?"}]},
+  {n:6, title:"Staying somewhere",
+   summary:"Check in and out, ask for what your room is missing, and take a first look at the polite ます-form you will hear from staff and in announcements.",
+   goals:["Check in with a reservation and check out","Leave your luggage","Ask for something your room is missing","Recognise ます-form in what staff say to you"],
+   kanji:[],
+   grammar:"Recognise the endings ます, ません and ました, the particles へ, で, を and に, and invitations with ～ませんか. Recognising only, not conjugating: set phrases still do the work.",
+   scenario:{title:"Hotel check-in", text:"Check in with a booking, ask about breakfast and Wi-Fi, and leave your luggage on the last day."},
+   preview:[
+     {k:"チェックインを おねがいします", e:"I’d like to check in"},
+     {k:"よやくしています", e:"I have a reservation"},
+     {k:"にもつを あずけても いいですか", e:"May I leave my luggage?"},
+     {k:"ちょうしょくは なんじからですか", e:"What time does breakfast start?"},
+     {k:"Wi-Fiの パスワードを おしえて ください", e:"Please tell me the Wi-Fi password"},
+     {k:"タオルを もう ひとつ おねがいします", e:"One more towel, please"}]},
+  {n:7, title:"Sights and temples",
+   summary:"Buy tickets, ask about opening hours, ask whether you may take photos, and read the warning signs at temples and attractions.",
+   goals:["Ask the entrance fee and buy tickets","Ask about opening hours","Ask permission to take photos","Recognise warnings: prohibited, caution, no smoking, emergency exit"],
+   kanji:[{k:"禁止",e:"prohibited"},{k:"注意",e:"caution"},{k:"非常口",e:"emergency exit"},{k:"禁煙",e:"no smoking"},{k:"入場料",e:"admission fee"},{k:"営業時間",e:"opening hours"}],
+   scenario:{title:"A full day out", text:"Combine everything: get there by train, buy a ticket, ask about photos and find lunch."},
+   preview:[
+     {k:"にゅうじょうりょうは いくらですか", e:"How much is the entrance fee?"},
+     {k:"おとな ふたり おねがいします", e:"Two adults, please"},
+     {k:"しゃしんを とっても いいですか", e:"May I take a photo?"},
+     {k:"なんじまで やっていますか", e:"Until what time are you open?"},
+     {k:"えいごの パンフレットは ありますか", e:"Do you have an English leaflet?"}]},
+  {n:8, title:"Arrival and putting it together",
+   summary:"Handle the airport, ask for help when you need it, and tie everything together at natural speed. Revisit your weak spots and try scenarios with no script.",
+   goals:["Answer the basic arrival questions","Ask someone to repeat or to slow down","Ask for help and say what is wrong","Mix everything from weeks 1 to 7 without prompts"],
+   kanji:[],
+   scenario:{title:"Arrival and first day", text:"Land, clear immigration, get into the city, check in and find dinner, with no script."},
+   preview:[
+     {k:"かんこうです", e:"Sightseeing (the reason for your visit)"},
+     {k:"もういちど おねがいします", e:"One more time, please"},
+     {k:"ゆっくり おねがいします", e:"Slowly, please"},
+     {k:"わかりません", e:"I don’t understand"},
+     {k:"たすけて ください", e:"Please help me"},
+     {k:"パスポートを なくしました", e:"I lost my passport"}]}
+];
+
+function allPhrases(){ return WEEKS.flatMap(w => w.phrases || []); }
 
 /* Audio file name for a phrase. Derived from the romaji so the generator and the page
    always agree without a second field to keep in sync. */
@@ -295,12 +437,13 @@ function bestAlternative(p, alts){
 /* ---------- page wiring ---------- */
 function init(){
   const $ = id => document.getElementById(id);
-  const KEY = "jpt-week1-done";
   const KEY_ROMAJI = "jpt-show-romaji";
-  let idx = 0, revealed = false;
+  let week = null, phrases = [], idx = 0, revealed = false;
   let done = new Set();
-  try { done = new Set(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch (e) {}
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...done])); } catch (e) {} };
+  /* One done-set per week. Week 1 keeps the key it has always had, so saved progress survives. */
+  const doneKey = n => "jpt-week" + n + "-done";
+  const loadDone = n => { try { return new Set(JSON.parse(localStorage.getItem(doneKey(n)) || "[]")); } catch (e) { return new Set(); } };
+  const save = () => { try { localStorage.setItem(doneKey(week.n), JSON.stringify([...done])); } catch (e) {} };
   const KEY_VOICE = "jpt-voice";
   try { $("romajiToggle").checked = localStorage.getItem(KEY_ROMAJI) === "1"; } catch (e) {}
 
@@ -314,8 +457,8 @@ function init(){
   function romajiVisible(){ return $("romajiToggle").checked && kanaVisible(); }
 
   function renderCard(){
-    const p = PHRASES[idx];
-    $("counter").textContent = "Phrase " + (idx + 1) + " of " + PHRASES.length + " · " + done.size + " done";
+    const p = phrases[idx];
+    $("counter").textContent = "Phrase " + (idx + 1) + " of " + phrases.length + " · " + done.size + " done";
     $("english").textContent = p.e;
     const show = kanaVisible();
     $("kana").textContent = show ? p.k : "・・・・・";
@@ -331,7 +474,7 @@ function init(){
   function renderList(){
     const ol = $("list");
     ol.textContent = "";
-    PHRASES.forEach((p, i) => {
+    phrases.forEach((p, i) => {
       const li = document.createElement("li");
       const b = document.createElement("button");
       b.type = "button"; b.className = "item";
@@ -354,7 +497,7 @@ function init(){
   }
 
   function go(i){
-    idx = (i + PHRASES.length) % PHRASES.length;
+    idx = (i + phrases.length) % phrases.length;
     revealed = false;
     stopMic(); micSay("");
     $("answer").value = "";
@@ -447,7 +590,7 @@ function init(){
   }
 
   function speak(slow){
-    const p = PHRASES[idx];
+    const p = phrases[idx];
     try { player.pause(); } catch (e) {}
     if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
     player.src = "audio/" + $("voice").value + "/" + audioId(p) + (slow ? ".slow" : "") + ".m4a";
@@ -497,10 +640,10 @@ function init(){
       heard = true;
       /* Reset now rather than on "end": some browsers are slow or unreliable about it. */
       rec = null; setListening(false);
-      const text = bestAlternative(PHRASES[idx], alts);
+      const text = bestAlternative(phrases[idx], alts);
       $("answer").value = text; updatePreview();
       micSay("Heard: " + text);
-      showFeedback(checkAnswer(PHRASES[idx], text), PHRASES[idx]);
+      showFeedback(checkAnswer(phrases[idx], text), phrases[idx]);
     };
     r.onerror = e => {
       failed = true;
@@ -519,7 +662,7 @@ function init(){
   $("answer").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("check").click(); } });
   $("check").addEventListener("click", () => {
     const raw = convert($("answer").value, true);
-    showFeedback(checkAnswer(PHRASES[idx], raw), PHRASES[idx]);
+    showFeedback(checkAnswer(phrases[idx], raw), phrases[idx]);
   });
   $("clear").addEventListener("click", () => { $("answer").value = ""; $("feedback").textContent = ""; updatePreview(); $("answer").focus(); });
   $("listen").addEventListener("click", () => speak(false));
@@ -542,7 +685,100 @@ function init(){
     pickVoice();
     window.speechSynthesis.addEventListener?.("voiceschanged", pickVoice);
   }
-  go(0);
+
+  /* ---- course views: the overview at #, a week at #week-N ---- */
+  function el(tag, cls, text){
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function block(title, ...kids){
+    const s = el("div", "sec");
+    s.append(el("h2", null, title), ...kids);
+    return s;
+  }
+
+  function renderOverview(){
+    document.title = "Japan Phrase Trainer";
+    const ol = $("weeks");
+    ol.textContent = "";
+    WEEKS.forEach(w => {
+      const li = el("li"), a = el("a", "item");
+      a.href = "#week-" + w.n;
+      const jp = el("span", "jp");
+      jp.append(el("b", null, "Week " + w.n), w.title);
+      a.append(jp, el("span", "en", w.summary));
+      const total = (w.phrases || []).length;
+      if (total) {
+        const n = loadDone(w.n).size;
+        a.append(el("span", "chip", n >= total ? "Done" : n + " / " + total));
+      } else {
+        a.append(el("span", "chip muted", "Outline"));
+      }
+      li.append(a);
+      ol.append(li);
+    });
+  }
+
+  function renderWeekInfo(w){
+    const box = $("weekInfo");
+    box.textContent = "";
+    box.append(el("p", "english", w.summary));
+    const goals = el("ul");
+    w.goals.forEach(g => goals.append(el("li", null, g)));
+    box.append(block("You will be able to", goals));
+    if (w.grammar) box.append(block("A little grammar", el("p", "note", w.grammar)));
+    if (w.kanji.length) {
+      const row = el("div", "kanji-row");
+      w.kanji.forEach(k => {
+        const c = el("div", "kj"), b = el("b", null, k.k);
+        b.lang = "ja";
+        c.append(b, el("span", null, k.e));
+        row.append(c);
+      });
+      box.append(block("Signs to recognise", row));
+    }
+    box.append(block("Scenario: " + w.scenario.title, el("p", "note", w.scenario.text)));
+    if (w.tip) box.append(el("p", "note", w.tip));
+    if (!(w.phrases || []).length) {
+      const list = el("div");
+      w.preview.forEach(p => {
+        const row = el("div", "pv"), jp = el("span", "jp", p.k);
+        jp.lang = "ja";
+        row.append(jp, el("span", "en", p.e));
+        list.append(row);
+      });
+      box.append(block("Key phrases", list),
+        el("p", "note", "Practice cards with audio for this week are still being written. This is a first look at the phrases you will learn."));
+    }
+  }
+
+  function openWeek(w){
+    week = w; phrases = w.phrases || []; done = loadDone(w.n);
+    document.title = "Week " + w.n + ": " + w.title + " · Japan Phrase Trainer";
+    $("weekNo").textContent = "Week " + w.n + " of " + WEEKS.length;
+    $("weekTitle").textContent = w.title;
+    renderWeekInfo(w);
+    const practice = phrases.length > 0;
+    $("practice").hidden = $("listSection").hidden = $("helpTyping").hidden = !practice;
+    if (practice) go(0); else $("list").textContent = "";
+  }
+
+  function route(){
+    const m = /^#week-(\d+)$/.exec(location.hash);
+    const w = m && WEEKS.find(x => x.n === +m[1]);
+    stopMic();
+    try { player.pause(); } catch (e) {}
+    if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+    $("overview").hidden = !!w;
+    $("weekView").hidden = !w;
+    if (w) openWeek(w); else renderOverview();
+    window.scrollTo(0, 0);
+  }
+
+  window.addEventListener("hashchange", route);
+  route();
 }
 if (typeof document !== "undefined") init();
 </script>

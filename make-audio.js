@@ -16,13 +16,14 @@ const ONLY = opt('--voice', null);
 const RATE = +opt('--rate', 170);
 const SLOW_RATE = +opt('--slow-rate', 135);
 const PAUSE = +opt('--pause', 400);
-const OUT = path.join(__dirname, opt('--out', 'audio'));
+const OUT = path.resolve(__dirname, opt('--out', 'audio'));
 
 const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const code = html.split('<script>')[1].split('</script>')[0];
 const ctx = {}; vm.createContext(ctx);
-vm.runInContext(code + ';this.t={PHRASES,VOICES,audioId,speechChunks}', ctx);
-const { PHRASES, VOICES, audioId, speechChunks } = ctx.t;
+vm.runInContext(code + ';this.t={allPhrases,VOICES,audioId,speechChunks}', ctx);
+const { allPhrases, VOICES, audioId, speechChunks } = ctx.t;
+const PHRASES = allPhrases();
 
 const voices = ONLY ? VOICES.filter(v => v.id === ONLY) : VOICES;
 if (!voices.length) {
