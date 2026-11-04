@@ -2,8 +2,8 @@ const fs=require('fs'),vm=require('vm');
 const html=fs.readFileSync('index.html','utf8');
 const code=html.split('<script>')[1].split('</script>')[0];
 const ctx={};vm.createContext(ctx);
-vm.runInContext(code+';this.t={convert,checkAnswer,bestAlternative,WEEKS,allPhrases,hearPhrases,japaneseVoices,voiceQuality,voiceTier,voiceLabel,voiceOptions,rankVoices,voiceStatus,weekPhrases,reviewCards,deckSize,resolveProfile,fillPhrase,nameToKana,isKana,COUNTRIES,JOBS,EXAMPLE,numberReading,priceItem,PRICES,parseYen,priceHint,strip}',ctx);
-const {convert,checkAnswer,bestAlternative,WEEKS,allPhrases,hearPhrases,japaneseVoices,voiceQuality,voiceTier,voiceLabel,voiceOptions,rankVoices,voiceStatus,weekPhrases,reviewCards,deckSize,resolveProfile,fillPhrase,nameToKana,isKana,COUNTRIES,JOBS,EXAMPLE,numberReading,priceItem,PRICES,parseYen,priceHint,strip}=ctx.t;
+vm.runInContext(code+';this.t={convert,checkAnswer,bestAlternative,WEEKS,allPhrases,hearPhrases,isAppleMobile,japaneseVoices,voiceQuality,voiceTier,voiceLabel,voiceOptions,rankVoices,voiceStatus,weekPhrases,reviewCards,deckSize,resolveProfile,fillPhrase,nameToKana,isKana,COUNTRIES,JOBS,EXAMPLE,numberReading,priceItem,PRICES,parseYen,priceHint,strip}',ctx);
+const {convert,checkAnswer,bestAlternative,WEEKS,allPhrases,hearPhrases,isAppleMobile,japaneseVoices,voiceQuality,voiceTier,voiceLabel,voiceOptions,rankVoices,voiceStatus,weekPhrases,reviewCards,deckSize,resolveProfile,fillPhrase,nameToKana,isKana,COUNTRIES,JOBS,EXAMPLE,numberReading,priceItem,PRICES,parseYen,priceHint,strip}=ctx.t;
 /* Week 1 is built from the learner's profile. Daniel's own must reproduce his original cards. */
 const DANIEL=resolveProfile({name:{e:'Daniel',r:'DANIERU'},country:{id:'de'},job:{id:'teacher'}});
 const PHRASES=weekPhrases(WEEKS[0],DANIEL);
@@ -189,6 +189,10 @@ eq(voiceTier(U('Kyoko','com.apple.voice.premium.ja-JP.Kyoko')),'Premium','a prem
 eq(voiceLabel(V('Kyoko (Enhanced)','ja-JP')),'Kyoko (Enhanced)','a name that says it already is not repeated');
 const same=voiceOptions([V('Kyoko','ja-JP'),V('Kyoko','ja-JP')]);
 eq(same.map(o=>o.label+'/'+o.key).join('|'),'Kyoko/Kyoko|Kyoko 2/Kyoko 2','indistinguishable voices still get their own label and key');
+need(isAppleMobile('Mozilla/5.0 (iPhone; CPU iPhone OS 27_2 like Mac OS X)',5),'iPhone');
+need(isAppleMobile('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',5),'iPadOS calls itself a Mac');
+need(!isAppleMobile('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',0),'a real Mac');
+need(!isAppleMobile('Mozilla/5.0 (Linux; Android 15)',5),'Android');
 console.log((errs.length?'FAIL':'ok  ')+' course:',WEEKS.length+' weeks,',allPhrases().length+' phrases,',hearPhrases().length+' heard items,',kanjiTotal+' signs');
 errs.forEach(e=>console.log('  - '+e));
 if(errs.length)process.exitCode=1;

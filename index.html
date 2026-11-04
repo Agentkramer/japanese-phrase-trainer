@@ -246,6 +246,7 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
       <li>The particle は is typed <b>ha</b>, even though it is read “wa”.</li>
       <li>Tap <b>Speak</b> and say the phrase. What the browser heard appears in the answer field and is checked straight away. Recognition often returns kanji. These phrases accept the usual kanji spellings, so a miss means it heard something different. Say it again, a little slower.</li>
       <li>Speak uses your browser’s speech service, so it needs an internet connection and permission to use the microphone. If there is no Speak button, this browser has no speech recognition. Tap the microphone on the keyboard while a Japanese keyboard is active instead.</li>
+      <li>On iPhone and iPad, Safari often hears only the first dictation (a known iOS problem). Use the keyboard’s microphone for the rest. To add the Japanese keyboard: Settings → General → Keyboard → Keyboards → Add New Keyboard → Japanese.</li>
       <li>Listen is read aloud by your device’s own Japanese voice, so it sounds different on different devices and is better with an Enhanced voice installed (see “Sounds off?” under Options). “Listen slowly” is the same reading with a pause between the parts, not a stretched one.</li>
     </ul>
   </details>
@@ -826,6 +827,10 @@ function voiceStatus(v){
   if (voiceQuality(v) >= 2) return {level:"good", text:"Read aloud by your device\u2019s voice: " + voiceLabel(v) + ". Other devices sound a little different."};
   return {level:"basic", text:"Read aloud by your device\u2019s voice: " + voiceLabel(v) + ". It is a basic voice and may sound flat or robotic. See \u201CSounds off?\u201D below."};
 }
+/* iPadOS Safari calls itself a Mac, so a Mac with a touch screen counts too. */
+function isAppleMobile(ua, touchPoints){
+  return /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && touchPoints > 1);
+}
 function speechText(p){ return p.s || p.k; }
 function speechChunks(p){ return speechText(p).split(/\s+/).filter(Boolean); }
 
@@ -1177,11 +1182,17 @@ function init(){
     "service-not-allowed": "Speech recognition is switched off on this device. On iPad or iPhone, turn on Dictation in Settings → General → Keyboard.",
     "audio-capture": "No microphone found.",
     "network": "Speech recognition needs an internet connection.",
-    "language-not-supported": "This browser has no Japanese speech recognition.",
-    "no-speech": "Did not hear anything. Tap Speak and try again."
+    "language-not-supported": "This browser has no Japanese speech recognition."
   };
   let rec = null, micTimer = null, requestStop = null;
-  const QUIET_MS = 1500, STOP_WAIT_MS = 800, LISTEN_MS = 10000;
+  /* WebKit bug 321436, open as of 2026-11: on iOS 27 a later session starts and shows the mic
+     but never hears anything, and a reload does not always help. The page cannot fix that,
+     so it says what is going on and what works instead. */
+  const APPLE_MOBILE = isAppleMobile(navigator.userAgent, navigator.maxTouchPoints || 0);
+  const HEARD_NOTHING = APPLE_MOBILE
+    ? "Safari did not hear anything. On iPhone and iPad this is a known iOS problem: Safari often hears only the first dictation. Use the keyboard instead: tap Your answer, switch to the Japanese keyboard, tap its microphone, then tap Check. Closing Safari completely may bring Speak back for one more try."
+    : "Did not catch anything. Tap Speak and try again.";
+  const QUIET_MS = 1500, STOP_WAIT_MS = 800, LISTEN_MS = APPLE_MOBILE ? 7000 : 10000;
 
   function micSay(t){ const m = $("micMsg"); m.hidden = !t; m.textContent = t || ""; }
   function setListening(on){
@@ -1225,7 +1236,7 @@ function init(){
     const settle = () => {
       if (last) { finish(last); return; }
       release();
-      micSay("Did not catch anything. Tap Speak and try again.");
+      micSay(HEARD_NOTHING);
     };
     requestStop = () => {
       try { r.stop(); } catch (e) {}
@@ -1242,9 +1253,11 @@ function init(){
     };
     r.onerror = e => {
       if (rec !== r) return;
-      if (last) { finish(last); return; }
+      /* We null `rec` before aborting, so an "aborted" that gets here was not ours: iOS
+         answers stop() with it when it heard nothing. */
+      if (last || e.error === "aborted" || e.error === "no-speech") { settle(); return; }
       release();
-      if (e.error !== "aborted") micSay(MIC_ERRORS[e.error] || "Speech recognition failed (" + e.error + ").");
+      micSay(MIC_ERRORS[e.error] || "Speech recognition failed (" + e.error + ").");
     };
     r.onend = () => { if (rec === r) settle(); };
     rec = r; setListening(true); micSay("Listening…");
