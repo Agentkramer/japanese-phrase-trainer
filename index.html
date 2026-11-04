@@ -83,8 +83,9 @@ a.item{text-decoration:none}
 .card h2{margin:0}
 .card ul{margin:0;padding-left:20px;display:grid;gap:4px}
 .card .sec{display:grid;gap:8px}
-.tabs{display:flex;flex-wrap:wrap;gap:8px}
-.tab{font:inherit;font-weight:500;min-height:44px;padding:8px 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;position:sticky;top:0;z-index:5;background:var(--bg);padding:8px 0;margin:-8px 0}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;font:inherit;font-weight:500;min-height:44px;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
 .tab:hover{border-color:var(--accent)}
 .tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .tab:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
@@ -133,6 +134,26 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
 .voice-status[data-level="basic"],.voice-status[data-level="none"]{color:var(--bad)}
 .voice-help{margin-top:8px;font-size:.9rem}
 .voice-help summary{min-height:44px;display:flex;align-items:center;cursor:pointer}
+.weekhead{display:flex;flex-wrap:wrap;align-items:center;gap:0 12px}
+#weekTitle{font-size:1.3rem;margin:0}
+.card{scroll-margin-top:72px}
+.cardbar{display:flex;align-items:center;gap:8px}
+.cardbar .btn.icon{font-size:1.25rem;line-height:1}
+.counter{flex:1;min-width:0;text-align:center;font-size:.9rem;line-height:1.3}
+.counter small{display:block;color:var(--muted);font-size:.8rem}
+.options{display:grid;gap:4px;padding:4px 12px 12px;border-radius:10px;background:var(--bg)}
+#listSection{padding:0}
+#listSection summary{padding:12px 16px}
+#listSection ol{padding:0 12px 12px}
+.next-after{margin-top:10px}
+@media (min-width:960px){
+  body.week main{max-width:980px}
+  body.week .view.two{grid-template-columns:minmax(0,1fr) 340px;align-items:start}
+  body.week .view.two > :first-child{grid-row:1 / span 2}
+  body.week .view.two > :not(:first-child){grid-column:2}
+  body.week .view.single{max-width:640px}
+  #listSection{position:sticky;top:64px;max-height:calc(100vh - 150px);overflow-y:auto}
+}
 </style>
 </head>
 <body>
@@ -160,24 +181,34 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
 
   <div class="view" id="weekView" hidden>
   <header>
-    <a class="back" href="#">← All weeks</a>
-    <p id="weekNo"></p>
+    <div class="weekhead">
+      <a class="back" href="#">← Weeks</a>
+      <p id="weekNo"></p>
+    </div>
     <h1 id="weekTitle"></h1>
   </header>
 
-  <section class="card" id="weekInfo" aria-label="About this week"></section>
-
   <div class="tabs" id="tabs" role="tablist" aria-label="Activities" hidden></div>
 
-  <div class="view" id="act-phrases">
+  <div class="view single" id="act-about" hidden>
+    <section class="card" id="weekInfo" aria-label="About this week"></section>
+  </div>
+
+  <div class="view two" id="act-phrases">
   <section class="card" id="practice" aria-label="Current phrase">
-    <div class="top">
-      <span id="counter"></span>
+    <div class="cardbar">
+      <button class="btn icon" id="prev" type="button" aria-label="Previous phrase">‹</button>
+      <span class="counter" id="counter"></span>
+      <button class="btn icon" id="next" type="button" aria-label="Next phrase">›</button>
+      <button class="btn" id="optionsBtn" type="button" aria-expanded="false" aria-controls="cardOptions">Options</button>
     </div>
-    <div class="toggles">
-      <label class="toggle"><input type="checkbox" id="hide"> Hide kana, recall from English</label>
-      <label class="toggle"><input type="checkbox" id="romajiToggle"> Show romaji</label>
-      <label class="toggle">Voice <select id="voice"></select></label>
+    <div class="options" id="cardOptions" hidden>
+      <div class="toggles">
+        <label class="toggle"><input type="checkbox" id="hide"> Hide kana, recall from English</label>
+        <label class="toggle"><input type="checkbox" id="romajiToggle"> Show romaji</label>
+        <label class="toggle">Voice <select id="voice"></select></label>
+      </div>
+      <div class="voice-slot"></div>
     </div>
     <p class="english" id="english"></p>
     <p class="kana" id="kana" lang="ja"></p>
@@ -188,7 +219,7 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
       <button class="btn" id="slow" type="button">Listen slowly</button>
       <button class="btn" id="reveal" type="button" hidden>Show kana</button>
     </div>
-    <div class="voice-slot"></div>
+    <button class="linkbtn" id="voiceAlert" type="button" hidden></button>
 
     <label class="field" for="answer">Your answer</label>
     <input type="text" id="answer" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" inputmode="text" placeholder="Type romaji, or dictate">
@@ -200,16 +231,12 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
     </div>
     <p class="note" id="micMsg" role="status" hidden></p>
     <div id="feedback" role="status" aria-live="polite"></div>
-    <div class="row">
-      <button class="btn" id="prev" type="button">Previous</button>
-      <button class="btn" id="next" type="button">Next phrase</button>
-    </div>
   </section>
 
-  <section id="listSection" aria-label="All phrases">
-    <h2>All phrases</h2>
+  <details id="listSection">
+    <summary id="listTitle">All phrases</summary>
     <ol id="list"></ol>
-  </section>
+  </details>
 
   <details id="helpTyping">
     <summary>How to type and dictate</summary>
@@ -219,12 +246,12 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
       <li>The particle は is typed <b>ha</b>, even though it is read “wa”.</li>
       <li>Tap <b>Speak</b> and say the phrase. What the browser heard appears in the answer field and is checked straight away. Recognition often returns kanji. These phrases accept the usual kanji spellings, so a miss means it heard something different. Say it again, a little slower.</li>
       <li>Speak uses your browser’s speech service, so it needs an internet connection and permission to use the microphone. If there is no Speak button, this browser has no speech recognition. Tap the microphone on the keyboard while a Japanese keyboard is active instead.</li>
-      <li>Listen is read aloud by your device’s own Japanese voice, so it sounds different on different devices and is better with an Enhanced voice installed (see “Sounds off?” under the buttons). “Listen slowly” is the same reading with a pause between the parts, not a stretched one.</li>
+      <li>Listen is read aloud by your device’s own Japanese voice, so it sounds different on different devices and is better with an Enhanced voice installed (see “Sounds off?” under Options). “Listen slowly” is the same reading with a pause between the parts, not a stretched one.</li>
     </ul>
   </details>
   </div>
 
-  <div class="view" id="act-listen" hidden>
+  <div class="view two" id="act-listen" hidden>
     <section class="card" id="qz" aria-label="What did they say?">
       <h2>What did they say?</h2>
       <p class="note">Press play, then pick what it means and what you would answer. Staff speak at normal speed.</p>
@@ -247,7 +274,7 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
     </section>
   </div>
 
-  <div class="view" id="act-numbers" hidden>
+  <div class="view two" id="act-numbers" hidden>
     <section class="card" id="drill" aria-label="Price drill">
       <h2>How many yen?</h2>
       <p class="note">Listen, then type the price as digits. Listen slowly pauses between the parts. Use the table below if you are not sure how a number is built.</p>
@@ -274,7 +301,7 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
     </details>
   </div>
 
-  <div class="view" id="act-signs" hidden>
+  <div class="view single" id="act-signs" hidden>
     <section class="card" id="signCard" aria-label="Sign deck">
       <h2>What does the sign mean?</h2>
       <div class="top"><span id="sgCount"></span></div>
@@ -285,7 +312,7 @@ details ul{margin:10px 0 2px;padding-left:20px;display:grid;gap:6px}
     </section>
   </div>
 
-  <div class="view" id="act-scenario" hidden>
+  <div class="view single" id="act-scenario" hidden>
     <section class="card" id="scCard" aria-label="Scenario">
       <h2 id="scTitle"></h2>
       <p class="note" id="scText"></p>
@@ -962,7 +989,8 @@ function init(){
 
   function renderCard(){
     const p = phrases[idx];
-    $("counter").textContent = "Phrase " + (idx + 1) + " of " + phrases.length + (p.review ? " · review" : "") + " · " + done.size + " done";
+    $("counter").textContent = "Phrase " + (idx + 1) + " of " + phrases.length;
+    $("counter").append(el("small", null, done.size + " done" + (p.review ? " · review" : "")));
     $("english").textContent = p.e;
     const show = kanaVisible();
     $("kana").textContent = show ? p.k : "・・・・・";
@@ -988,7 +1016,10 @@ function init(){
       b.append(jp, en);
       if (done.has(i)) { const c = document.createElement("span"); c.className = "chip"; c.textContent = "Done"; b.append(c); }
       else if (p.review) { const c = document.createElement("span"); c.className = "chip muted"; c.textContent = "Review"; b.append(c); }
-      b.addEventListener("click", () => go(i));
+      b.addEventListener("click", () => {
+        go(i);
+        if ($("practice").getBoundingClientRect().top < 0) $("practice").scrollIntoView();
+      });
       li.append(b);
       ol.append(li);
     });
@@ -1004,6 +1035,7 @@ function init(){
   function go(i){
     idx = (i + phrases.length) % phrases.length;
     revealed = false;
+    if (acts.card !== idx) { acts.card = idx; saveActs(); }
     stopMic(); micSay("");
     $("answer").value = "";
     $("feedback").textContent = "";
@@ -1056,6 +1088,11 @@ function init(){
       }
     }
     fb.append(d);
+    /* The arrows are at the top of the card, out of reach and maybe out of sight by now. */
+    const nextBtn = el("button", "btn next-after" + (res.status === "ok" ? " primary" : ""), "Next phrase");
+    nextBtn.type = "button";
+    nextBtn.addEventListener("click", () => go(idx + 1));
+    fb.append(nextBtn);
     revealed = true; renderCard();
   }
 
@@ -1090,6 +1127,8 @@ function init(){
     });
     const st = synth ? voiceStatus(jaVoice) : {level:"none", text:"This browser cannot read aloud. Try Safari, Chrome or Edge."};
     document.querySelectorAll(".voice-status").forEach(n => { n.dataset.level = st.level; n.textContent = st.text; });
+    $("voiceAlert").hidden = st.level === "good";
+    $("voiceAlert").textContent = st.level === "none" ? "No Japanese voice to read aloud. How to add one" : "This voice is a basic one. How to get a better one";
     document.querySelectorAll(".voice-id").forEach(n => { n.textContent = jaVoice ? "Technical name of this voice: " + (jaVoice.voiceURI || jaVoice.name) : ""; });
   }
   function setVoice(uri){
@@ -1223,6 +1262,16 @@ function init(){
   $("listen").addEventListener("click", () => speak(false));
   $("slow").addEventListener("click", () => speak(true));
   $("reveal").addEventListener("click", () => { revealed = true; renderCard(); });
+  function setOptions(open){
+    $("cardOptions").hidden = !open;
+    $("optionsBtn").setAttribute("aria-expanded", open ? "true" : "false");
+  }
+  $("optionsBtn").addEventListener("click", () => setOptions($("cardOptions").hidden));
+  $("voiceAlert").addEventListener("click", () => {
+    setOptions(true);
+    $("cardOptions").querySelector(".voice-help").open = true;
+    $("cardOptions").scrollIntoView({block:"nearest"});
+  });
   $("qzPlay").addEventListener("click", () => playClips([quizItem()]));
   $("qzNext").addEventListener("click", nextQuiz);
   $("drPlay").addEventListener("click", () => drPlay(false));
@@ -1241,6 +1290,13 @@ function init(){
   });
   $("prev").addEventListener("click", () => go(idx - 1));
   $("next").addEventListener("click", () => go(idx + 1));
+
+  /* All phrases is closed on a phone, where it is long, and open beside the card on a wide
+     screen. */
+  const wide = window.matchMedia("(min-width:960px)");
+  const syncList = () => { $("listSection").open = wide.matches; };
+  wide.addEventListener?.("change", syncList);
+  syncList();
 
   /* getVoices() is empty until the list loads, so read it again when it arrives. */
   renderVoices();
@@ -1347,17 +1403,25 @@ function init(){
         list.append(row);
       });
       box.append(block("Key phrases", list),
-        el("p", "note", "Practice cards with audio for this week are still being written. This is a first look at the phrases you will learn."));
+        el("p", "note", "Practice cards for this week are still being written. This is a first look at the phrases you will learn."));
+    }
+    const first = activitiesFor(w)[1];
+    if (first) {
+      const start = el("button", "btn primary", "Start with " + first[1].toLowerCase());
+      start.type = "button";
+      start.style.justifySelf = "start";
+      start.addEventListener("click", () => showActivity(first[0]));
+      box.append(start);
     }
   }
 
   /* ---- activities: a week can have several, shown one at a time ---- */
-  const ACTS = ["phrases", "listen", "numbers", "signs", "scenario"];
+  const ACTS = ["about", "phrases", "listen", "numbers", "signs", "scenario"];
   const SIGN_GOAL = 2;   // clean rounds of the sign deck that count as done
   const actsKey = n => "jpt-week" + n + "-acts";
   const loadActs = n => { try { return JSON.parse(localStorage.getItem(actsKey(n)) || "{}") || {}; } catch (e) { return {}; } };
   const saveActs = () => { try { localStorage.setItem(actsKey(week.n), JSON.stringify(acts)); } catch (e) {} };
-  let acts = {}, activity = "phrases";
+  let acts = {}, activity = "about";
   const shuffle = a => {
     const b = a.slice();
     for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; }
@@ -1374,7 +1438,7 @@ function init(){
   const jpSpan = text => { const s = el("span", "jp", text); s.lang = "ja"; return s; };
 
   function activitiesFor(w){
-    const list = [];
+    const list = [["about", "About"]];
     if (deckSize(w)) list.push(["phrases", "Phrases"]);
     if ((w.hear || []).length) list.push(["listen", "Listening"]);
     if (w.drill === "price") list.push(["numbers", "Numbers"]);
@@ -1396,12 +1460,17 @@ function init(){
       b.addEventListener("click", () => showActivity(id));
       bar.append(b);
     });
+    /* Rebuilding resets the row's scroll: keep the selected tab in sight on a phone. */
+    const sel = bar.querySelector('[aria-selected="true"]');
+    if (sel) bar.scrollLeft = Math.max(0, sel.offsetLeft - 16);
   }
 
   function showActivity(id){
     stopMic(); stopClips();
     activity = id;
+    if (acts.last !== id) { acts.last = id; saveActs(); }
     ACTS.forEach(a => { $("act-" + a).hidden = a !== id; });
+    window.scrollTo(0, 0);
     renderTabs(activitiesFor(week));
     if (id === "listen") startQuiz();
     else if (id === "numbers") startDrill();
@@ -1700,16 +1769,12 @@ function init(){
     renderWeekInfo(w);
     const practice = phrases.length > 0;
     $("practice").hidden = $("listSection").hidden = $("helpTyping").hidden = !practice;
-    if (practice) go(0); else $("list").textContent = "";
+    $("listTitle").textContent = "All phrases (" + phrases.length + ")";
+    if (practice) go(Number.isInteger(acts.card) && acts.card < phrases.length ? acts.card : 0); else $("list").textContent = "";
     buildHearList();
     buildNumberTable();
-    const list = activitiesFor(w);
-    if (!list.length) {   // an outline: nothing to practise yet
-      ACTS.forEach(a => { $("act-" + a).hidden = true; });
-      renderTabs([]);
-      return;
-    }
-    showActivity(list[0][0]);
+    /* About on the first visit, afterwards back to where the learner left off. */
+    showActivity(activitiesFor(w).some(a => a[0] === acts.last) ? acts.last : "about");
   }
 
   /* ---- setup form ---- */
@@ -1796,6 +1861,7 @@ function init(){
     stopClips();
     $("overview").hidden = !!w || setup;
     $("weekView").hidden = !w;
+    document.body.classList.toggle("week", !!w);
     $("setupView").hidden = !setup;
     if (w) openWeek(w); else if (setup) openSetup(); else renderOverview();
     window.scrollTo(0, 0);
